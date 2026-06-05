@@ -13,7 +13,20 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedUzytkownicyRouteImport } from './routes/_authenticated/uzytkownicy'
+import { Route as AuthenticatedUstawieniaRouteImport } from './routes/_authenticated/ustawienia'
+import { Route as AuthenticatedSprzedazRouteImport } from './routes/_authenticated/sprzedaz'
+import { Route as AuthenticatedRozliczeniaRouteImport } from './routes/_authenticated/rozliczenia'
+import { Route as AuthenticatedRaportyRouteImport } from './routes/_authenticated/raporty'
+import { Route as AuthenticatedPrzewoznicyRouteImport } from './routes/_authenticated/przewoznicy'
+import { Route as AuthenticatedPowiadomieniaRouteImport } from './routes/_authenticated/powiadomienia'
 import { Route as AuthenticatedPanelRouteImport } from './routes/_authenticated/panel'
+import { Route as AuthenticatedMagazynRouteImport } from './routes/_authenticated/magazyn'
+import { Route as AuthenticatedLogistykaRouteImport } from './routes/_authenticated/logistyka'
+import { Route as AuthenticatedKlienciRouteImport } from './routes/_authenticated/klienci'
+import { Route as AuthenticatedFakturowanieRouteImport } from './routes/_authenticated/fakturowanie'
+import { Route as AuthenticatedDostawyRouteImport } from './routes/_authenticated/dostawy'
+import { Route as AuthenticatedDostawcyRouteImport } from './routes/_authenticated/dostawcy'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -34,9 +47,79 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedUzytkownicyRoute =
+  AuthenticatedUzytkownicyRouteImport.update({
+    id: '/uzytkownicy',
+    path: '/uzytkownicy',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedUstawieniaRoute = AuthenticatedUstawieniaRouteImport.update({
+  id: '/ustawienia',
+  path: '/ustawienia',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSprzedazRoute = AuthenticatedSprzedazRouteImport.update({
+  id: '/sprzedaz',
+  path: '/sprzedaz',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRozliczeniaRoute =
+  AuthenticatedRozliczeniaRouteImport.update({
+    id: '/rozliczenia',
+    path: '/rozliczenia',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedRaportyRoute = AuthenticatedRaportyRouteImport.update({
+  id: '/raporty',
+  path: '/raporty',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPrzewoznicyRoute =
+  AuthenticatedPrzewoznicyRouteImport.update({
+    id: '/przewoznicy',
+    path: '/przewoznicy',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPowiadomieniaRoute =
+  AuthenticatedPowiadomieniaRouteImport.update({
+    id: '/powiadomienia',
+    path: '/powiadomienia',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPanelRoute = AuthenticatedPanelRouteImport.update({
   id: '/panel',
   path: '/panel',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMagazynRoute = AuthenticatedMagazynRouteImport.update({
+  id: '/magazyn',
+  path: '/magazyn',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLogistykaRoute = AuthenticatedLogistykaRouteImport.update({
+  id: '/logistyka',
+  path: '/logistyka',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedKlienciRoute = AuthenticatedKlienciRouteImport.update({
+  id: '/klienci',
+  path: '/klienci',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFakturowanieRoute =
+  AuthenticatedFakturowanieRouteImport.update({
+    id: '/fakturowanie',
+    path: '/fakturowanie',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDostawyRoute = AuthenticatedDostawyRouteImport.update({
+  id: '/dostawy',
+  path: '/dostawy',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDostawcyRoute = AuthenticatedDostawcyRouteImport.update({
+  id: '/dostawcy',
+  path: '/dostawcy',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
@@ -44,13 +127,39 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/dostawcy': typeof AuthenticatedDostawcyRoute
+  '/dostawy': typeof AuthenticatedDostawyRoute
+  '/fakturowanie': typeof AuthenticatedFakturowanieRoute
+  '/klienci': typeof AuthenticatedKlienciRoute
+  '/logistyka': typeof AuthenticatedLogistykaRoute
+  '/magazyn': typeof AuthenticatedMagazynRoute
   '/panel': typeof AuthenticatedPanelRoute
+  '/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
+  '/przewoznicy': typeof AuthenticatedPrzewoznicyRoute
+  '/raporty': typeof AuthenticatedRaportyRoute
+  '/rozliczenia': typeof AuthenticatedRozliczeniaRoute
+  '/sprzedaz': typeof AuthenticatedSprzedazRoute
+  '/ustawienia': typeof AuthenticatedUstawieniaRoute
+  '/uzytkownicy': typeof AuthenticatedUzytkownicyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/dostawcy': typeof AuthenticatedDostawcyRoute
+  '/dostawy': typeof AuthenticatedDostawyRoute
+  '/fakturowanie': typeof AuthenticatedFakturowanieRoute
+  '/klienci': typeof AuthenticatedKlienciRoute
+  '/logistyka': typeof AuthenticatedLogistykaRoute
+  '/magazyn': typeof AuthenticatedMagazynRoute
   '/panel': typeof AuthenticatedPanelRoute
+  '/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
+  '/przewoznicy': typeof AuthenticatedPrzewoznicyRoute
+  '/raporty': typeof AuthenticatedRaportyRoute
+  '/rozliczenia': typeof AuthenticatedRozliczeniaRoute
+  '/sprzedaz': typeof AuthenticatedSprzedazRoute
+  '/ustawienia': typeof AuthenticatedUstawieniaRoute
+  '/uzytkownicy': typeof AuthenticatedUzytkownicyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,20 +167,80 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/dostawcy': typeof AuthenticatedDostawcyRoute
+  '/_authenticated/dostawy': typeof AuthenticatedDostawyRoute
+  '/_authenticated/fakturowanie': typeof AuthenticatedFakturowanieRoute
+  '/_authenticated/klienci': typeof AuthenticatedKlienciRoute
+  '/_authenticated/logistyka': typeof AuthenticatedLogistykaRoute
+  '/_authenticated/magazyn': typeof AuthenticatedMagazynRoute
   '/_authenticated/panel': typeof AuthenticatedPanelRoute
+  '/_authenticated/powiadomienia': typeof AuthenticatedPowiadomieniaRoute
+  '/_authenticated/przewoznicy': typeof AuthenticatedPrzewoznicyRoute
+  '/_authenticated/raporty': typeof AuthenticatedRaportyRoute
+  '/_authenticated/rozliczenia': typeof AuthenticatedRozliczeniaRoute
+  '/_authenticated/sprzedaz': typeof AuthenticatedSprzedazRoute
+  '/_authenticated/ustawienia': typeof AuthenticatedUstawieniaRoute
+  '/_authenticated/uzytkownicy': typeof AuthenticatedUzytkownicyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/reset-password' | '/panel'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/dostawcy'
+    | '/dostawy'
+    | '/fakturowanie'
+    | '/klienci'
+    | '/logistyka'
+    | '/magazyn'
+    | '/panel'
+    | '/powiadomienia'
+    | '/przewoznicy'
+    | '/raporty'
+    | '/rozliczenia'
+    | '/sprzedaz'
+    | '/ustawienia'
+    | '/uzytkownicy'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/reset-password' | '/panel'
+  to:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/dostawcy'
+    | '/dostawy'
+    | '/fakturowanie'
+    | '/klienci'
+    | '/logistyka'
+    | '/magazyn'
+    | '/panel'
+    | '/powiadomienia'
+    | '/przewoznicy'
+    | '/raporty'
+    | '/rozliczenia'
+    | '/sprzedaz'
+    | '/ustawienia'
+    | '/uzytkownicy'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/_authenticated/dostawcy'
+    | '/_authenticated/dostawy'
+    | '/_authenticated/fakturowanie'
+    | '/_authenticated/klienci'
+    | '/_authenticated/logistyka'
+    | '/_authenticated/magazyn'
     | '/_authenticated/panel'
+    | '/_authenticated/powiadomienia'
+    | '/_authenticated/przewoznicy'
+    | '/_authenticated/raporty'
+    | '/_authenticated/rozliczenia'
+    | '/_authenticated/sprzedaz'
+    | '/_authenticated/ustawienia'
+    | '/_authenticated/uzytkownicy'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -111,6 +280,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/uzytkownicy': {
+      id: '/_authenticated/uzytkownicy'
+      path: '/uzytkownicy'
+      fullPath: '/uzytkownicy'
+      preLoaderRoute: typeof AuthenticatedUzytkownicyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ustawienia': {
+      id: '/_authenticated/ustawienia'
+      path: '/ustawienia'
+      fullPath: '/ustawienia'
+      preLoaderRoute: typeof AuthenticatedUstawieniaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sprzedaz': {
+      id: '/_authenticated/sprzedaz'
+      path: '/sprzedaz'
+      fullPath: '/sprzedaz'
+      preLoaderRoute: typeof AuthenticatedSprzedazRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/rozliczenia': {
+      id: '/_authenticated/rozliczenia'
+      path: '/rozliczenia'
+      fullPath: '/rozliczenia'
+      preLoaderRoute: typeof AuthenticatedRozliczeniaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/raporty': {
+      id: '/_authenticated/raporty'
+      path: '/raporty'
+      fullPath: '/raporty'
+      preLoaderRoute: typeof AuthenticatedRaportyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/przewoznicy': {
+      id: '/_authenticated/przewoznicy'
+      path: '/przewoznicy'
+      fullPath: '/przewoznicy'
+      preLoaderRoute: typeof AuthenticatedPrzewoznicyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/powiadomienia': {
+      id: '/_authenticated/powiadomienia'
+      path: '/powiadomienia'
+      fullPath: '/powiadomienia'
+      preLoaderRoute: typeof AuthenticatedPowiadomieniaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/panel': {
       id: '/_authenticated/panel'
       path: '/panel'
@@ -118,15 +336,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPanelRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/magazyn': {
+      id: '/_authenticated/magazyn'
+      path: '/magazyn'
+      fullPath: '/magazyn'
+      preLoaderRoute: typeof AuthenticatedMagazynRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/logistyka': {
+      id: '/_authenticated/logistyka'
+      path: '/logistyka'
+      fullPath: '/logistyka'
+      preLoaderRoute: typeof AuthenticatedLogistykaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/klienci': {
+      id: '/_authenticated/klienci'
+      path: '/klienci'
+      fullPath: '/klienci'
+      preLoaderRoute: typeof AuthenticatedKlienciRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/fakturowanie': {
+      id: '/_authenticated/fakturowanie'
+      path: '/fakturowanie'
+      fullPath: '/fakturowanie'
+      preLoaderRoute: typeof AuthenticatedFakturowanieRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dostawy': {
+      id: '/_authenticated/dostawy'
+      path: '/dostawy'
+      fullPath: '/dostawy'
+      preLoaderRoute: typeof AuthenticatedDostawyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dostawcy': {
+      id: '/_authenticated/dostawcy'
+      path: '/dostawcy'
+      fullPath: '/dostawcy'
+      preLoaderRoute: typeof AuthenticatedDostawcyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDostawcyRoute: typeof AuthenticatedDostawcyRoute
+  AuthenticatedDostawyRoute: typeof AuthenticatedDostawyRoute
+  AuthenticatedFakturowanieRoute: typeof AuthenticatedFakturowanieRoute
+  AuthenticatedKlienciRoute: typeof AuthenticatedKlienciRoute
+  AuthenticatedLogistykaRoute: typeof AuthenticatedLogistykaRoute
+  AuthenticatedMagazynRoute: typeof AuthenticatedMagazynRoute
   AuthenticatedPanelRoute: typeof AuthenticatedPanelRoute
+  AuthenticatedPowiadomieniaRoute: typeof AuthenticatedPowiadomieniaRoute
+  AuthenticatedPrzewoznicyRoute: typeof AuthenticatedPrzewoznicyRoute
+  AuthenticatedRaportyRoute: typeof AuthenticatedRaportyRoute
+  AuthenticatedRozliczeniaRoute: typeof AuthenticatedRozliczeniaRoute
+  AuthenticatedSprzedazRoute: typeof AuthenticatedSprzedazRoute
+  AuthenticatedUstawieniaRoute: typeof AuthenticatedUstawieniaRoute
+  AuthenticatedUzytkownicyRoute: typeof AuthenticatedUzytkownicyRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDostawcyRoute: AuthenticatedDostawcyRoute,
+  AuthenticatedDostawyRoute: AuthenticatedDostawyRoute,
+  AuthenticatedFakturowanieRoute: AuthenticatedFakturowanieRoute,
+  AuthenticatedKlienciRoute: AuthenticatedKlienciRoute,
+  AuthenticatedLogistykaRoute: AuthenticatedLogistykaRoute,
+  AuthenticatedMagazynRoute: AuthenticatedMagazynRoute,
   AuthenticatedPanelRoute: AuthenticatedPanelRoute,
+  AuthenticatedPowiadomieniaRoute: AuthenticatedPowiadomieniaRoute,
+  AuthenticatedPrzewoznicyRoute: AuthenticatedPrzewoznicyRoute,
+  AuthenticatedRaportyRoute: AuthenticatedRaportyRoute,
+  AuthenticatedRozliczeniaRoute: AuthenticatedRozliczeniaRoute,
+  AuthenticatedSprzedazRoute: AuthenticatedSprzedazRoute,
+  AuthenticatedUstawieniaRoute: AuthenticatedUstawieniaRoute,
+  AuthenticatedUzytkownicyRoute: AuthenticatedUzytkownicyRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
