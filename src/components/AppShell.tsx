@@ -92,10 +92,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
+            <SheetContent
+              side="left"
+              className="p-0 w-72 [&>button.absolute]:hidden"
+            >
               <SheetTitle className="sr-only">Menu</SheetTitle>
-              <div className="flex h-14 items-center border-b px-4">
+              <div className="flex h-14 items-center justify-between border-b px-4">
                 <span className="font-semibold">Tropical Trade</span>
+                <SheetClose asChild>
+                  <Button variant="ghost" size="icon" aria-label="Zamknij menu">
+                    <X className="h-5 w-5" />
+                  </Button>
+                </SheetClose>
               </div>
               <div className="overflow-y-auto pb-4">
                 <NavList onNavigate={() => setMobileOpen(false)} />
