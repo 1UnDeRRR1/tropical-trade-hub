@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Menu, LogOut } from "lucide-react";
+import { Menu, LogOut, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 import { visibleNavItems, ROLE_LABELS } from "@/lib/navigation";
