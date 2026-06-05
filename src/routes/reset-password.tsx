@@ -17,17 +17,41 @@ function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasRecovery, setHasRecovery] = useState(false);
+  const [checkingLink, setCheckingLink] = useState(true);
 
   useEffect(() => {
-    // Supabase parses the URL hash on load; listen for PASSWORD_RECOVERY
+    let active = true;
+
+    const enableIfRecoverySessionExists = async () => {
+      const url = new URL(window.location.href);
+      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+      const code = url.searchParams.get("code");
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const linkType = hashParams.get("type") || url.searchParams.get("type");
+
+      if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
+      } else if (accessToken && refreshToken) {
+        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      }
+
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      setHasRecovery(Boolean(data.session) && (!linkType || linkType === "recovery"));
+      setCheckingLink(false);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setHasRecovery(true);
     });
-    // Also check session
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setHasRecovery(true);
+    enableIfRecoverySessionExists().catch(() => {
+      if (active) setCheckingLink(false);
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -49,16 +73,20 @@ function ResetPasswordPage() {
         <CardHeader>
           <CardTitle className="text-2xl">Ustaw nowe hasło</CardTitle>
           <CardDescription>
-            {hasRecovery ? "Wprowadź nowe hasło dla swojego konta." : "Otwórz link odzyskiwania z wiadomości, aby kontynuować."}
+            {checkingLink
+              ? "Sprawdzanie linku odzyskiwania…"
+              : hasRecovery
+                ? "Wprowadź nowe hasło dla swojego konta."
+                : "Otwórz link odzyskiwania z wiadomości, aby kontynuować."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="password">Nowe hasło</Label>
-              <Input id="password" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} disabled={!hasRecovery} />
+              <Input id="password" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} disabled={!hasRecovery || checkingLink} />
             </div>
-            <Button type="submit" className="w-full" disabled={loading || !hasRecovery}>
+            <Button type="submit" className="w-full" disabled={loading || !hasRecovery || checkingLink}>
               {loading ? "Zapisywanie…" : "Zapisz hasło"}
             </Button>
           </form>
