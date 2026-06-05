@@ -94,11 +94,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-72">
               <SheetTitle className="sr-only">Menu</SheetTitle>
-              <div className="flex h-14 items-center justify-between border-b px-4">
+              <div className="flex h-14 items-center border-b px-4">
                 <span className="font-semibold">Tropical Trade</span>
-                <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} aria-label="Zamknij">
-                  <X className="h-5 w-5" />
-                </Button>
               </div>
               <div className="overflow-y-auto pb-4">
                 <NavList onNavigate={() => setMobileOpen(false)} />
