@@ -36,7 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
   { path: "/uzytkownicy", label: "Użytkownicy", icon: UserCog, roles: [] },
   { path: "/dostawcy", label: "Dostawcy", icon: Building2, roles: ["kierownik", "asystent_kierownika", "import_manager"] },
   { path: "/przewoznicy", label: "Przewoźnicy", icon: Ship, roles: ["kierownik", "asystent_kierownika", "logistyk"] },
-  { path: "/ustawienia", label: "Ustawienia", icon: Settings, roles: ["kierownik"] },
+  { path: "/ustawienia", label: "Ustawienia", icon: Settings, roles: [] },
   { path: "/powiadomienia", label: "Powiadomienia", icon: Bell, roles: ["kierownik", "asystent_kierownika", "import_manager", "sales_manager", "logistyk", "magazynier", "fakturowanie", "export_manager"] },
 ];
 
