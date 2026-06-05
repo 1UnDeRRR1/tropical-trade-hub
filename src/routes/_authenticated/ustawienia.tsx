@@ -110,7 +110,7 @@ function Page() {
               table="standardy_palet"
               columns={standardyCols}
               orderBy="standard_palety_id"
-              searchFields={["standard_palety_id", "nazwa_produktu_pl", "wariant_opakowania_pl", "typ_palety_pl"]}
+              searchFields={["standard_palety_id", "nazwa_produktu_pl", "kraj_lub_grupa_pochodzenia_pl", "wariant_opakowania_pl", "typ_palety_pl", "material_tary"]}
             />
           </TabsContent>
         </Tabs>
