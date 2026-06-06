@@ -1544,6 +1544,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      aktualizuj_dostawe_z_pozycjami: {
+        Args: {
+          p_data_dostawy: string
+          p_data_zaladunku: string
+          p_dostawa_id: string
+          p_dostawca_id: string
+          p_import_manager_id: string
+          p_kraj_id: string
+          p_notes: string
+          p_pozycje: Json
+          p_status: string
+        }
+        Returns: string
+      }
       current_uzytkownik_id: { Args: never; Returns: string }
       has_any_role: { Args: { _klucze: string[] }; Returns: boolean }
       has_role: { Args: { _klucz: string }; Returns: boolean }
