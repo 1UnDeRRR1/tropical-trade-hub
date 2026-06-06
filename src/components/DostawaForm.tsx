@@ -510,10 +510,11 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   }, [dostawcy, kraje, dostawcaId, krajId]);
 
   useEffect(() => {
-    if (mode === "create" && !managerId && isImportMgr && profile?.uzytkownik_id) {
-      setManagerId(profile.uzytkownik_id);
-    }
-  }, [profile, isImportMgr, managerId, mode]);
+    if (mode !== "create" || managerId) return;
+    if (isImportMgr && profile?.uzytkownik_id) { setManagerId(profile.uzytkownik_id); return; }
+    if (managers.length === 1) { setManagerId(managers[0].id); }
+  }, [profile, isImportMgr, managerId, mode, managers]);
+
 
   // Auto-fill loading country from supplier (only create mode)
   useEffect(() => {
