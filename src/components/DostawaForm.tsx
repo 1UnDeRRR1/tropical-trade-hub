@@ -866,7 +866,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             )}
           </div>
 
-          <div className="md:col-span-2">
+          <div>
             <Label>Kraj załadunku *</Label>
             <Combobox
               items={kraje}
