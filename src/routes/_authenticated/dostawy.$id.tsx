@@ -57,12 +57,15 @@ function StatusBadge({ status }: { status: string }) {
 
 function Page() {
   const { id } = Route.useParams();
-  const { roleKeys } = useCurrentProfile();
+  const { profile, roleKeys } = useCurrentProfile();
+  const isSuper = roleKeys.includes("super_admin");
+  const isImportMgr = roleKeys.includes("import_manager");
   const canSeeFinance =
-    roleKeys.includes("super_admin") ||
+    isSuper ||
     roleKeys.includes("kierownik") ||
     roleKeys.includes("asystent_kierownika") ||
-    roleKeys.includes("import_manager");
+    isImportMgr;
+
 
   const [dostawa, setDostawa] = useState<Dostawa | null>(null);
   const [pozycje, setPozycje] = useState<Pozycja[]>([]);
