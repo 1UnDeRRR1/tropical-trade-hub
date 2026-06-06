@@ -155,8 +155,8 @@ function calculatePositionLine(input: PozycjaForm, changedField: ChangedField, s
 type FieldErrors = Partial<Record<keyof PozycjaForm | "opakowanie", string>>;
 function validatePosition(p: PozycjaForm, standard: StandardRow | null = null): FieldErrors {
   const e: FieldErrors = {};
-  if (!p.produkt_id) e.produkt_id = "Produkt wymagany (wybierz z listy)";
-  if (!p.kraj_id) e.kraj_id = "Kraj pochodzenia wymagany (wybierz z listy)";
+  if (!p.produkt_id) e.produkt_id = p.produkt_query.trim() ? "Wybierz produkt z listy" : "Produkt wymagany";
+  if (!p.kraj_id) e.kraj_id = p.kraj_query.trim() ? "Wybierz kraj z listy" : "Kraj pochodzenia wymagany";
   if (p.opakowanie_source === "custom") {
     const t = p.opakowanie_custom_text.trim();
     if (t.length > 200) e.opakowanie_custom_text = "Max 200 znaków";
@@ -305,15 +305,18 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const [opakowania, setOpakowania] = useState<OpakItem[]>([]);
   const [managers, setManagers] = useState<RefItem[]>([]);
   const [standardy, setStandardy] = useState<StandardRow[]>([]);
-  // alias index: normalized alias -> Set of produkt_id / kraj_id
+  // alias index: normalized alias -> Set of produkt_id / kraj_id / dostawca_id
   const [produktAliases, setProduktAliases] = useState<Map<string, Set<string>>>(new Map());
   const [krajAliases, setKrajAliases] = useState<Map<string, Set<string>>>(new Map());
+  const [dostawcaAliases, setDostawcaAliases] = useState<Map<string, Set<string>>>(new Map());
 
   const today = new Date().toISOString().slice(0,10);
   const [dataZaladunku, setDataZaladunku] = useState(existing?.data_zaladunku ?? today);
   const [dataDostawy, setDataDostawy] = useState(existing?.data_dostawy ?? today);
   const [dostawcaId, setDostawcaId] = useState(existing?.dostawca_id ?? "");
+  const [dostawcaQuery, setDostawcaQuery] = useState("");
   const [krajId, setKrajId] = useState(existing?.kraj_id ?? "");
+  const [krajZaladunkuQuery, setKrajZaladunkuQuery] = useState("");
   const [krajManuallySet, setKrajManuallySet] = useState(mode === "edit");
   const [krajAutofilledFromSupplier, setKrajAutofilledFromSupplier] = useState<string | null>(null);
   const [managerId, setManagerId] = useState(existing?.import_manager_id ?? "");
@@ -352,7 +355,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   // -----------------------------------------------------------------
   useEffect(() => {
     (async () => {
-      const [d, k, p, o, op, st, u, ap, ak] = await Promise.all([
+      const [d, k, p, o, op, st, u, ap, ak, ad] = await Promise.all([
         supabase.from("dostawcy").select("dostawca_id, nazwa_dostawcy_original, alias_dostawcy, kraj_id").order("nazwa_dostawcy_original"),
         supabase.from("kraje").select("kraj_id, nazwa_pl, iso3").order("nazwa_pl"),
         supabase.from("produkty").select("produkt_id, nazwa_pl, aliasy_pl").order("nazwa_pl"),
@@ -364,6 +367,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           : Promise.resolve({ data: [] as Array<{ uzytkownik_id: string; imie_nazwisko: string | null }> }),
         supabase.from("aliasy_produktow").select("alias, produkt_id").not("produkt_id","is",null),
         supabase.from("aliasy_krajow").select("alias, kraj_id").not("kraj_id","is",null),
+        supabase.from("aliasy_dostawcow").select("alias, dostawca_id").not("dostawca_id","is",null),
       ]);
       setDostawcy((d.data ?? []).map((x) => {
         const primary = x.nazwa_dostawcy_original || x.alias_dostawcy || x.dostawca_id;
@@ -415,6 +419,16 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         ka.get(key)!.add(row.kraj_id);
       }
       setKrajAliases(ka);
+
+      const da = new Map<string, Set<string>>();
+      for (const row of (ad.data ?? []) as Array<{ alias: string | null; dostawca_id: string | null }>) {
+        if (!row.alias || !row.dostawca_id) continue;
+        const key = normalize(row.alias);
+        if (!key) continue;
+        if (!da.has(key)) da.set(key, new Set());
+        da.get(key)!.add(row.dostawca_id);
+      }
+      setDostawcaAliases(da);
     })();
   }, [isSuper, isImportMgr, profile?.uzytkownik_id, profile?.imie_nazwisko]);
 
@@ -478,7 +492,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   // ---------- Alias-aware filters ----------
   const produktFilter = (item: RefItem, q: string): boolean => {
     if (startsWithWord(item.search ?? item.label, q)) return true;
-    // alias match: any alias starting with q whose product id == item.id
     const norm = normalize(q);
     if (norm.length < 2) return false;
     for (const [aliasKey, ids] of produktAliases) {
@@ -491,6 +504,15 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     const norm = normalize(q);
     if (norm.length < 2) return false;
     for (const [aliasKey, ids] of krajAliases) {
+      if (aliasKey.startsWith(norm) && ids.has(item.id)) return true;
+    }
+    return false;
+  };
+  const dostawcaFilter = (item: RefItem, q: string): boolean => {
+    if (startsWithWord(item.search ?? item.label, q)) return true;
+    const norm = normalize(q);
+    if (norm.length < 2) return false;
+    for (const [aliasKey, ids] of dostawcaAliases) {
       if (aliasKey.startsWith(norm) && ids.has(item.id)) return true;
     }
     return false;
