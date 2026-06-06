@@ -13,6 +13,7 @@ function Page() {
   const { profile, roleKeys } = useCurrentProfile();
   const isSuper = roleKeys.includes("super_admin");
   const isImportMgr = roleKeys.includes("import_manager");
+  const isKierownik = roleKeys.includes("kierownik");
 
   const [data, setData] = useState<ExistingDostawa | null>(null);
   const [err, setErr] = useState<string | null>(null);
