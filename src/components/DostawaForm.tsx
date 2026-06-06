@@ -731,23 +731,36 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
       return;
     }
     setSaving(true);
-    const payload = pozycje.map((p) => ({
-      id: p.id ?? null,
-      produkt_id: p.produkt_id,
-      odmiana_id: p.odmiana_id || null,
-      opakowanie_source: p.opakowanie_source,
-      opakowanie_id: p.opakowanie_source === "catalog" ? p.opakowanie_id : null,
-      opakowanie_custom_text: p.opakowanie_source === "custom" ? p.opakowanie_custom_text.trim() : null,
-      material_tary: p.material_tary,
-      kraj_id: p.kraj_id || null,
-      palety: Number(p.palety) || 0,
-      ilosc_opakowan: p.ilosc_opakowan === "" ? null : Number(p.ilosc_opakowan),
-      netto_kg: Number(p.netto_kg),
-      brutto_kg: Number(p.brutto_kg),
-      cena_zakupu: Number(p.cena_zakupu),
-      waluta: p.waluta,
-      notes: p.notes || null,
-    }));
+    const payload = pozycje.map((p) => {
+      const netto = toNum(p.netto_kg);
+      const brutto = toNum(p.brutto_kg);
+      const cena = toNum(p.cena_zakupu);
+      const palety = toNum(p.palety);
+      const ilosc = toNum(p.ilosc_opakowan);
+      return {
+        id: p.id ?? null,
+        produkt_id: p.produkt_id,
+        odmiana_id: p.odmiana_id || null,
+        opakowanie_source: p.opakowanie_source,
+        opakowanie_id: p.opakowanie_source === "catalog" ? p.opakowanie_id : null,
+        opakowanie_custom_text: p.opakowanie_source === "custom" ? p.opakowanie_custom_text.trim() : null,
+        material_tary: p.material_tary,
+        kraj_id: p.kraj_id || null,
+        palety: palety ?? 0,
+        ilosc_opakowan: ilosc,
+        netto_kg: netto as number,
+        brutto_kg: brutto as number,
+        cena_zakupu: cena as number,
+        waluta: p.waluta,
+        notes: p.notes || null,
+      };
+    });
+    if (payload.some((r) => r.netto_kg == null || r.brutto_kg == null || r.cena_zakupu == null)) {
+      setSaving(false);
+      setSubmitError("Niepoprawne wartości liczbowe. Popraw zaznaczone pola.");
+      triggerShake();
+      return;
+    }
 
     if (mode === "edit" && existing) {
       const { data, error: rpcErr } = await supabase.rpc("aktualizuj_dostawe_z_pozycjami", {
