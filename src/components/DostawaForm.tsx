@@ -995,8 +995,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 }
               }}
               placeholder="Wpisz nazwę kraju"
-              invalid={submitTried && !krajId}
-              invalidPulse={shouldPulse("kraj_zaladunku", submitTried && !krajId)}
+              invalid={!krajId}
+              invalidPulse={shouldPulse("kraj_zaladunku", !krajId)}
             />
             {submitTried && !krajId && (
               <FieldErr msg={krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany"} />
