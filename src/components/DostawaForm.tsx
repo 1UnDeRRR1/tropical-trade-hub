@@ -422,11 +422,28 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const [saving, setSaving] = useState(false);
   const [submitTried, setSubmitTried] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const pulseTimerRef = useRef<number | null>(null);
+  const [activePulseFields, setActivePulseFields] = useState<Set<string>>(() => new Set());
   const [shakeKey, setShakeKey] = useState(0);
-  const triggerShake = () => {
+  const pulseFields = (fields: string[]) => {
+    if (pulseTimerRef.current !== null) window.clearTimeout(pulseTimerRef.current);
+    setActivePulseFields(new Set(fields));
+    pulseTimerRef.current = window.setTimeout(() => {
+      setActivePulseFields(new Set());
+      pulseTimerRef.current = null;
+    }, 1200);
+  };
+  const triggerFailedSubmitFeedback = (fields: string[]) => {
     setShakeKey((k) => k + 1);
+    pulseFields(fields);
     try { if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.([60, 40, 60]); } catch { /* noop */ }
   };
+  const triggerFieldFeedback = (field: string) => pulseFields([field]);
+  const shouldPulse = (field: string, invalid: boolean) => invalid && activePulseFields.has(field);
+
+  useEffect(() => () => {
+    if (pulseTimerRef.current !== null) window.clearTimeout(pulseTimerRef.current);
+  }, []);
 
   // -----------------------------------------------------------------
   // Load reference data + aliases
