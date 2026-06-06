@@ -1233,7 +1233,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         <Button key={m} type="button" size="sm"
                           variant={p.material_tary === m ? "default" : "outline"}
                           onClick={() => onMaterialChange(i, m)}
-                          className={cn(showErrs && errs.material_tary && !p.material_tary && "border-destructive field-invalid-pulse")}>
+                          className={cn(showErrs && errs.material_tary && !p.material_tary && "border-destructive", shouldPulse(`row_${i}_material_tary`, showErrs && !!errs.material_tary && !p.material_tary) && "field-invalid-pulse")}>
                           {m === "karton" ? "Karton" : m === "drewno" ? "Drewno" : "Plastik"}
                         </Button>
                       ))}
@@ -1246,7 +1246,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Palety *</Label>
                       <Input type="text" inputMode="numeric" pattern="\d*" value={p.palety}
                         onChange={(e) => onPaletyChange(i, e.target.value)}
-                        className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive field-invalid-pulse")} />
+                        className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive", shouldPulse(`row_${i}_palety`, showErrs && !!errs.palety) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.palety ?? (totals.palety > MAX_PALETY ? "Limit auta 26 palet" : undefined)} />}
                     </div>
 
@@ -1254,7 +1254,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Ilość opakowań *</Label>
                       <Input type="text" inputMode="numeric" pattern="\d*" value={p.ilosc_opakowan}
                         onChange={(e) => onIloscOpakowanChange(i, e.target.value)}
-                        className={cn(showErrs && errs.ilosc_opakowan && "border-destructive field-invalid-pulse")} />
+                        className={cn(showErrs && errs.ilosc_opakowan && "border-destructive", shouldPulse(`row_${i}_ilosc_opakowan`, showErrs && !!errs.ilosc_opakowan) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.ilosc_opakowan} />}
                     </div>
                   </div>
@@ -1264,7 +1264,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Netto (kg) *</Label>
                       <Input type="text" inputMode="decimal" value={p.netto_kg}
                         onChange={(e) => applyChainedPatch(i, { netto_kg: e.target.value }, "netto_kg")}
-                        className={cn(showErrs && errs.netto_kg && "border-destructive field-invalid-pulse")} />
+                        className={cn(showErrs && errs.netto_kg && "border-destructive", shouldPulse(`row_${i}_netto_kg`, showErrs && !!errs.netto_kg) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.netto_kg} />}
                     </div>
 
@@ -1272,7 +1272,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Brutto (kg) *</Label>
                       <Input type="text" inputMode="decimal" value={p.brutto_kg}
                         onChange={(e) => applyChainedPatch(i, { brutto_kg: e.target.value }, "brutto_kg")}
-                        className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive field-invalid-pulse")} />
+                        className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive", shouldPulse(`row_${i}_brutto_kg`, showErrs && !!errs.brutto_kg) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.brutto_kg ?? (totals.brutto > MAX_BRUTTO_KG ? "Limit auta 21500 kg" : undefined)} />}
                     </div>
                   </div>
@@ -1282,7 +1282,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Cena za 1 kg (€) *</Label>
                       <Input type="text" inputMode="decimal" value={p.cena_zakupu}
                         onChange={(e) => updateRow(i, { cena_zakupu: e.target.value })}
-                        className={cn(showErrs && errs.cena_zakupu && "border-destructive field-invalid-pulse")} />
+                        className={cn(showErrs && errs.cena_zakupu && "border-destructive", shouldPulse(`row_${i}_cena_zakupu`, showErrs && !!errs.cena_zakupu) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.cena_zakupu} />}
                     </div>
 
@@ -1305,7 +1305,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     <Label>Komentarz</Label>
                     <Input value={p.notes} maxLength={100}
                       onChange={(e) => updateRow(i, { notes: e.target.value })}
-                      className={cn(showErrs && errs.notes && "border-destructive field-invalid-pulse")} />
+                      className={cn(showErrs && errs.notes && "border-destructive", shouldPulse(`row_${i}_notes`, showErrs && !!errs.notes) && "field-invalid-pulse")} />
                     <p className="mt-1 text-xs text-muted-foreground">{(p.notes ?? "").length}/100</p>
                     {showErrs && <FieldErr msg={errs.notes} />}
                   </div>
