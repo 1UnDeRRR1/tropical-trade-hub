@@ -1105,7 +1105,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         <CardContent className="space-y-4">
           {pozycje.map((p, i) => {
             const errs = lineErrors[i];
-            const showErrs = true;
+            const showErrs = submitTried;
             const odmianyForProdukt = p.produkt_id ? odmiany.filter((o) => o.produkt_id === p.produkt_id) : [];
             const sugg = suggestedOpakIdsOrdered(p.produkt_id, p.kraj_id);
             const opakById = new Map(opakowania.map((o) => [o.id, o] as const));
@@ -1219,6 +1219,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         ? "Brak standardów palet dla tego produktu — wpisz tekst, aby wyszukać opakowanie"
                         : undefined}
                       invalid={showErrs && !!errs.opakowanie_custom_text}
+                      invalidPulse={shouldPulse(`row_${i}_opakowanie_custom_text`, showErrs && !!errs.opakowanie_custom_text)}
                     />
                     {warnings.length > 0 && (
                       <p className="mt-1 text-xs text-muted-foreground">{warnings[0]}</p>
@@ -1325,6 +1326,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           <div>Razem netto (kg): <strong>{totals.netto.toFixed(2)}</strong></div>
           <div>Razem brutto (kg): <strong>{totals.brutto.toFixed(2)}</strong> / {MAX_BRUTTO_KG}</div>
           <div>Razem wartość (€): <strong>{(totals.byWal.get("EUR") ?? 0).toFixed(2)}</strong></div>
+
+          {submitTried && submitSummary.length > 0 && (
+            <div className="rounded-md border border-destructive p-3 text-sm text-destructive space-y-1">
+              <div className="font-medium">Nie można zapisać dostawy:</div>
+              {submitSummary.slice(0, 12).map((m, i) => <div key={i}>• {m}</div>)}
+              {submitSummary.length > 12 && <div>• I inne błędy: {submitSummary.length - 12}</div>}
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-2 pt-4">
             <Button type="button" variant="outline" disabled={saving} onClick={() => submit("draft")}>
