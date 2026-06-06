@@ -777,9 +777,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             </p>
           )
         )}
-        <p className="text-sm text-muted-foreground">
-          Każda pozycja otrzymuje własny, unikalny identyfikator wewnętrzny.
-        </p>
       </div>
 
       {submitTried && (headerErrors.length > 0 || capacityErrors.length > 0 || submitError) && (
