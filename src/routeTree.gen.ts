@@ -27,6 +27,9 @@ import { Route as AuthenticatedKlienciRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedFakturowanieRouteImport } from './routes/_authenticated/fakturowanie'
 import { Route as AuthenticatedDostawyRouteImport } from './routes/_authenticated/dostawy'
 import { Route as AuthenticatedDostawcyRouteImport } from './routes/_authenticated/dostawcy'
+import { Route as AuthenticatedDostawyIndexRouteImport } from './routes/_authenticated/dostawy.index'
+import { Route as AuthenticatedDostawyNowaRouteImport } from './routes/_authenticated/dostawy.nowa'
+import { Route as AuthenticatedDostawyIdRouteImport } from './routes/_authenticated/dostawy.$id'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -122,13 +125,30 @@ const AuthenticatedDostawcyRoute = AuthenticatedDostawcyRouteImport.update({
   path: '/dostawcy',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDostawyIndexRoute =
+  AuthenticatedDostawyIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedDostawyRoute,
+  } as any)
+const AuthenticatedDostawyNowaRoute =
+  AuthenticatedDostawyNowaRouteImport.update({
+    id: '/nowa',
+    path: '/nowa',
+    getParentRoute: () => AuthenticatedDostawyRoute,
+  } as any)
+const AuthenticatedDostawyIdRoute = AuthenticatedDostawyIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedDostawyRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/dostawcy': typeof AuthenticatedDostawcyRoute
-  '/dostawy': typeof AuthenticatedDostawyRoute
+  '/dostawy': typeof AuthenticatedDostawyRouteWithChildren
   '/fakturowanie': typeof AuthenticatedFakturowanieRoute
   '/klienci': typeof AuthenticatedKlienciRoute
   '/logistyka': typeof AuthenticatedLogistykaRoute
@@ -141,13 +161,15 @@ export interface FileRoutesByFullPath {
   '/sprzedaz': typeof AuthenticatedSprzedazRoute
   '/ustawienia': typeof AuthenticatedUstawieniaRoute
   '/uzytkownicy': typeof AuthenticatedUzytkownicyRoute
+  '/dostawy/$id': typeof AuthenticatedDostawyIdRoute
+  '/dostawy/nowa': typeof AuthenticatedDostawyNowaRoute
+  '/dostawy/': typeof AuthenticatedDostawyIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/dostawcy': typeof AuthenticatedDostawcyRoute
-  '/dostawy': typeof AuthenticatedDostawyRoute
   '/fakturowanie': typeof AuthenticatedFakturowanieRoute
   '/klienci': typeof AuthenticatedKlienciRoute
   '/logistyka': typeof AuthenticatedLogistykaRoute
@@ -160,6 +182,9 @@ export interface FileRoutesByTo {
   '/sprzedaz': typeof AuthenticatedSprzedazRoute
   '/ustawienia': typeof AuthenticatedUstawieniaRoute
   '/uzytkownicy': typeof AuthenticatedUzytkownicyRoute
+  '/dostawy/$id': typeof AuthenticatedDostawyIdRoute
+  '/dostawy/nowa': typeof AuthenticatedDostawyNowaRoute
+  '/dostawy': typeof AuthenticatedDostawyIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -168,7 +193,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/dostawcy': typeof AuthenticatedDostawcyRoute
-  '/_authenticated/dostawy': typeof AuthenticatedDostawyRoute
+  '/_authenticated/dostawy': typeof AuthenticatedDostawyRouteWithChildren
   '/_authenticated/fakturowanie': typeof AuthenticatedFakturowanieRoute
   '/_authenticated/klienci': typeof AuthenticatedKlienciRoute
   '/_authenticated/logistyka': typeof AuthenticatedLogistykaRoute
@@ -181,6 +206,9 @@ export interface FileRoutesById {
   '/_authenticated/sprzedaz': typeof AuthenticatedSprzedazRoute
   '/_authenticated/ustawienia': typeof AuthenticatedUstawieniaRoute
   '/_authenticated/uzytkownicy': typeof AuthenticatedUzytkownicyRoute
+  '/_authenticated/dostawy/$id': typeof AuthenticatedDostawyIdRoute
+  '/_authenticated/dostawy/nowa': typeof AuthenticatedDostawyNowaRoute
+  '/_authenticated/dostawy/': typeof AuthenticatedDostawyIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -202,13 +230,15 @@ export interface FileRouteTypes {
     | '/sprzedaz'
     | '/ustawienia'
     | '/uzytkownicy'
+    | '/dostawy/$id'
+    | '/dostawy/nowa'
+    | '/dostawy/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/reset-password'
     | '/dostawcy'
-    | '/dostawy'
     | '/fakturowanie'
     | '/klienci'
     | '/logistyka'
@@ -221,6 +251,9 @@ export interface FileRouteTypes {
     | '/sprzedaz'
     | '/ustawienia'
     | '/uzytkownicy'
+    | '/dostawy/$id'
+    | '/dostawy/nowa'
+    | '/dostawy'
   id:
     | '__root__'
     | '/'
@@ -241,6 +274,9 @@ export interface FileRouteTypes {
     | '/_authenticated/sprzedaz'
     | '/_authenticated/ustawienia'
     | '/_authenticated/uzytkownicy'
+    | '/_authenticated/dostawy/$id'
+    | '/_authenticated/dostawy/nowa'
+    | '/_authenticated/dostawy/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -378,12 +414,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDostawcyRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dostawy/': {
+      id: '/_authenticated/dostawy/'
+      path: '/'
+      fullPath: '/dostawy/'
+      preLoaderRoute: typeof AuthenticatedDostawyIndexRouteImport
+      parentRoute: typeof AuthenticatedDostawyRoute
+    }
+    '/_authenticated/dostawy/nowa': {
+      id: '/_authenticated/dostawy/nowa'
+      path: '/nowa'
+      fullPath: '/dostawy/nowa'
+      preLoaderRoute: typeof AuthenticatedDostawyNowaRouteImport
+      parentRoute: typeof AuthenticatedDostawyRoute
+    }
+    '/_authenticated/dostawy/$id': {
+      id: '/_authenticated/dostawy/$id'
+      path: '/$id'
+      fullPath: '/dostawy/$id'
+      preLoaderRoute: typeof AuthenticatedDostawyIdRouteImport
+      parentRoute: typeof AuthenticatedDostawyRoute
+    }
   }
 }
 
+interface AuthenticatedDostawyRouteChildren {
+  AuthenticatedDostawyIdRoute: typeof AuthenticatedDostawyIdRoute
+  AuthenticatedDostawyNowaRoute: typeof AuthenticatedDostawyNowaRoute
+  AuthenticatedDostawyIndexRoute: typeof AuthenticatedDostawyIndexRoute
+}
+
+const AuthenticatedDostawyRouteChildren: AuthenticatedDostawyRouteChildren = {
+  AuthenticatedDostawyIdRoute: AuthenticatedDostawyIdRoute,
+  AuthenticatedDostawyNowaRoute: AuthenticatedDostawyNowaRoute,
+  AuthenticatedDostawyIndexRoute: AuthenticatedDostawyIndexRoute,
+}
+
+const AuthenticatedDostawyRouteWithChildren =
+  AuthenticatedDostawyRoute._addFileChildren(AuthenticatedDostawyRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDostawcyRoute: typeof AuthenticatedDostawcyRoute
-  AuthenticatedDostawyRoute: typeof AuthenticatedDostawyRoute
+  AuthenticatedDostawyRoute: typeof AuthenticatedDostawyRouteWithChildren
   AuthenticatedFakturowanieRoute: typeof AuthenticatedFakturowanieRoute
   AuthenticatedKlienciRoute: typeof AuthenticatedKlienciRoute
   AuthenticatedLogistykaRoute: typeof AuthenticatedLogistykaRoute
@@ -400,7 +472,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDostawcyRoute: AuthenticatedDostawcyRoute,
-  AuthenticatedDostawyRoute: AuthenticatedDostawyRoute,
+  AuthenticatedDostawyRoute: AuthenticatedDostawyRouteWithChildren,
   AuthenticatedFakturowanieRoute: AuthenticatedFakturowanieRoute,
   AuthenticatedKlienciRoute: AuthenticatedKlienciRoute,
   AuthenticatedLogistykaRoute: AuthenticatedLogistykaRoute,
@@ -427,3 +499,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
