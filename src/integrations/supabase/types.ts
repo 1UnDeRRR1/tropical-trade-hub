@@ -1544,6 +1544,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _gen_business_numer: {
+        Args: { _dostawca_id: string; _kraj_id: string }
+        Returns: string
+      }
+      _kraj_iso3: { Args: { _kraj_id: string }; Returns: string }
+      _supplier_code: { Args: { _dostawca_id: string }; Returns: string }
       aktualizuj_dostawe_z_pozycjami: {
         Args: {
           p_data_dostawy: string
