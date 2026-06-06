@@ -187,10 +187,10 @@ function Page() {
     const { data, error: rpcErr } = await supabase.rpc("utworz_dostawe_z_pozycjami", {
       p_data_dostawy: dataDostawy,
       p_dostawca_id: dostawcaId,
-      p_kraj_id: krajId || null,
+      p_kraj_id: krajId || "",
       p_import_manager_id: managerId,
       p_status: s,
-      p_notes: notes || null,
+      p_notes: notes || "",
       p_pozycje: payload,
     });
     setSaving(false);
