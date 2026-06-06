@@ -271,6 +271,70 @@ export type Database = {
           },
         ]
       }
+      dostawy: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_dostawy: string
+          dostawca_id: string
+          id: string
+          import_manager_id: string
+          kraj_id: string | null
+          notes: string | null
+          numer_dostawy: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_dostawy: string
+          dostawca_id: string
+          id?: string
+          import_manager_id: string
+          kraj_id?: string | null
+          notes?: string | null
+          numer_dostawy: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_dostawy?: string
+          dostawca_id?: string
+          id?: string
+          import_manager_id?: string
+          kraj_id?: string | null
+          notes?: string | null
+          numer_dostawy?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dostawy_dostawca_id_fkey"
+            columns: ["dostawca_id"]
+            isOneToOne: false
+            referencedRelation: "dostawcy"
+            referencedColumns: ["dostawca_id"]
+          },
+          {
+            foreignKeyName: "dostawy_import_manager_id_fkey"
+            columns: ["import_manager_id"]
+            isOneToOne: false
+            referencedRelation: "uzytkownicy"
+            referencedColumns: ["uzytkownik_id"]
+          },
+          {
+            foreignKeyName: "dostawy_kraj_id_fkey"
+            columns: ["kraj_id"]
+            isOneToOne: false
+            referencedRelation: "kraje"
+            referencedColumns: ["kraj_id"]
+          },
+        ]
+      }
       eksport_menedzerowie: {
         Row: {
           created_at: string
@@ -725,6 +789,147 @@ export type Database = {
           wartosc?: string | null
         }
         Relationships: []
+      }
+      pozycje: {
+        Row: {
+          created_at: string
+          dostawa_id: string
+          id: string
+          position_id: string
+          pozycja_dostawy_id: string
+          settlement_status: string
+          stock_status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dostawa_id: string
+          id?: string
+          position_id: string
+          pozycja_dostawy_id: string
+          settlement_status?: string
+          stock_status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dostawa_id?: string
+          id?: string
+          position_id?: string
+          pozycja_dostawy_id?: string
+          settlement_status?: string
+          stock_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pozycje_dostawa_id_fkey"
+            columns: ["dostawa_id"]
+            isOneToOne: false
+            referencedRelation: "dostawy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pozycje_pozycja_dostawy_id_fkey"
+            columns: ["pozycja_dostawy_id"]
+            isOneToOne: true
+            referencedRelation: "pozycje_dostawy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pozycje_dostawy: {
+        Row: {
+          brutto_kg: number | null
+          cena_zakupu: number
+          created_at: string
+          dostawa_id: string
+          id: string
+          ilosc_opakowan: number | null
+          kraj_id: string | null
+          netto_kg: number
+          notes: string | null
+          odmiana_id: string | null
+          opakowanie_id: string
+          palety: number
+          position_id: string
+          produkt_id: string
+          updated_at: string
+          waluta: string
+        }
+        Insert: {
+          brutto_kg?: number | null
+          cena_zakupu: number
+          created_at?: string
+          dostawa_id: string
+          id?: string
+          ilosc_opakowan?: number | null
+          kraj_id?: string | null
+          netto_kg: number
+          notes?: string | null
+          odmiana_id?: string | null
+          opakowanie_id: string
+          palety?: number
+          position_id: string
+          produkt_id: string
+          updated_at?: string
+          waluta: string
+        }
+        Update: {
+          brutto_kg?: number | null
+          cena_zakupu?: number
+          created_at?: string
+          dostawa_id?: string
+          id?: string
+          ilosc_opakowan?: number | null
+          kraj_id?: string | null
+          netto_kg?: number
+          notes?: string | null
+          odmiana_id?: string | null
+          opakowanie_id?: string
+          palety?: number
+          position_id?: string
+          produkt_id?: string
+          updated_at?: string
+          waluta?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pozycje_dostawy_dostawa_id_fkey"
+            columns: ["dostawa_id"]
+            isOneToOne: false
+            referencedRelation: "dostawy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pozycje_dostawy_kraj_id_fkey"
+            columns: ["kraj_id"]
+            isOneToOne: false
+            referencedRelation: "kraje"
+            referencedColumns: ["kraj_id"]
+          },
+          {
+            foreignKeyName: "pozycje_dostawy_odmiana_id_fkey"
+            columns: ["odmiana_id"]
+            isOneToOne: false
+            referencedRelation: "odmiany"
+            referencedColumns: ["odmiana_id"]
+          },
+          {
+            foreignKeyName: "pozycje_dostawy_opakowanie_id_fkey"
+            columns: ["opakowanie_id"]
+            isOneToOne: false
+            referencedRelation: "opakowania"
+            referencedColumns: ["opakowanie_id"]
+          },
+          {
+            foreignKeyName: "pozycje_dostawy_produkt_id_fkey"
+            columns: ["produkt_id"]
+            isOneToOne: false
+            referencedRelation: "produkty"
+            referencedColumns: ["produkt_id"]
+          },
+        ]
       }
       produkty: {
         Row: {
@@ -1341,6 +1546,22 @@ export type Database = {
         }[]
       }
       my_role_keys: { Args: never; Returns: string[] }
+      next_yearly_seq: {
+        Args: { _prefix: string; _year: number }
+        Returns: number
+      }
+      utworz_dostawe_z_pozycjami: {
+        Args: {
+          p_data_dostawy: string
+          p_dostawca_id: string
+          p_import_manager_id: string
+          p_kraj_id: string
+          p_notes: string
+          p_pozycje: Json
+          p_status: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

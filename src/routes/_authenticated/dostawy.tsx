@@ -1,7 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/dostawy")({
   head: () => ({ meta: [{ title: "Dostawy — Tropical Trade Platform" }] }),
-  component: () => <PlaceholderPage path="/dostawy" title="Dostawy" />,
+  component: () => <Outlet />,
 });
