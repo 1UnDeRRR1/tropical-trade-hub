@@ -177,10 +177,25 @@ function validatePosition(p: PozycjaForm, standard: StandardRow | null = null): 
   if (isBlank(p.cena_zakupu)) e.cena_zakupu = "Cena zakupu wymagana";
   else if (cena === null || cena < 0) e.cena_zakupu = "Cena zakupu >= 0";
   if (!["PLN","EUR","USD"].includes(p.waluta)) e.waluta = "PLN/EUR/USD";
-  if (p.opakowanie_source === "catalog" && standard && standard.liczba_opakowan_na_palecie !== null) {
-    const expectedBoxes = palety !== null ? palety * standard.liczba_opakowan_na_palecie : null;
-    if (differsFromExpected(p.ilosc_opakowan, expectedBoxes)) {
-      e.ilosc_opakowan = `Standard wymaga ${fmtAmount(expectedBoxes ?? 0, 0)} opak. dla ${p.palety || 0} palet`;
+  if (p.opakowanie_source === "catalog" && standard) {
+    const bpp = standard.liczba_opakowan_na_palecie;
+    const npb = standard.waga_netto_opakowania_kg;
+    const gpb = standard.waga_brutto_opakowania_kg;
+    if (bpp !== null && npb !== null && gpb !== null && palety !== null) {
+      const expectedBoxes = palety * bpp;
+      const expectedNet = expectedBoxes * npb;
+      const expectedGross = expectedBoxes * gpb;
+      // Boxes: strict — only numeric float tolerance 0.01
+      if (ilosc === null || Math.abs(ilosc - expectedBoxes) > 0.01) {
+        e.ilosc_opakowan = `Wg standardu: ${fmtAmount(expectedBoxes, 0)} (palety × ${bpp})`;
+      }
+      // Netto / Brutto: rounding tolerance ±0.5 kg
+      if (netto !== null && Math.abs(netto - expectedNet) > 0.5) {
+        e.netto_kg = `Wg standardu: ${fmtAmount(expectedNet)} kg`;
+      }
+      if (brutto !== null && Math.abs(brutto - expectedGross) > 0.5) {
+        e.brutto_kg = `Wg standardu: ${fmtAmount(expectedGross)} kg`;
+      }
     }
   }
   return e;
