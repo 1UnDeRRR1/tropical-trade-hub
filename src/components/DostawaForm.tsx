@@ -1029,7 +1029,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             <div>
               <Label>Data dostawy *</Label>
               <Input type="date" min={dataZaladunku || todayStr} value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
-                     className={cn("h-10 min-w-0 text-sm", submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive", shouldPulse("data_dostawy", submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku))) && "field-invalid-pulse")} />
+                     className={cn("h-10 min-w-0 text-sm", submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive", shouldPulse("data_dostawy", !!(submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)))) && "field-invalid-pulse")} />
               {submitTried && !dataDostawy && <FieldErr msg="Data dostawy wymagana" />}
               {submitTried && dataDostawy && dataZaladunku && dataDostawy <= dataZaladunku && (
                 <FieldErr msg="Data dostawy musi być późniejsza niż data załadunku" />
@@ -1145,16 +1145,15 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         })}
                         onPick={(id, label) => onPickProdukt(i, id, label)}
                         onBlurInput={() => {
-                          setTimeout(() => {
-                            const cur = pozycje[i];
-                            if (cur && !cur.produkt_id && cur.produkt_query.trim()) {
-                              updateRow(i, { produkt_query: "" });
-                              triggerShake();
-                            }
-                          }, 220);
+                          const cur = pozycje[i];
+                          if (cur && !cur.produkt_id && cur.produkt_query.trim()) {
+                            updateRow(i, { produkt_query: "" });
+                            triggerFieldFeedback(`row_${i}_produkt_id`);
+                          }
                         }}
                         placeholder="Np. cebula, ananas…"
                         invalid={showErrs && !!errs.produkt_id}
+                        invalidPulse={shouldPulse(`row_${i}_produkt_id`, showErrs && !!errs.produkt_id)}
                       />
                       {showErrs && <FieldErr msg={errs.produkt_id} />}
                     </div>
@@ -1169,16 +1168,15 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         onQuery={(s) => updateRow(i, { kraj_query: s, kraj_id: "", weights_autofilled: false })}
                         onPick={(id, label) => onPickKrajPoch(i, id, label)}
                         onBlurInput={() => {
-                          setTimeout(() => {
-                            const cur = pozycje[i];
-                            if (cur && !cur.kraj_id && cur.kraj_query.trim()) {
-                              updateRow(i, { kraj_query: "" });
-                              triggerShake();
-                            }
-                          }, 220);
+                          const cur = pozycje[i];
+                          if (cur && !cur.kraj_id && cur.kraj_query.trim()) {
+                            updateRow(i, { kraj_query: "" });
+                            triggerFieldFeedback(`row_${i}_kraj_id`);
+                          }
                         }}
                         placeholder="Np. Hiszpania, Maroko…"
                         invalid={showErrs && !!errs.kraj_id}
+                        invalidPulse={shouldPulse(`row_${i}_kraj_id`, showErrs && !!errs.kraj_id)}
                       />
                       {showErrs && <FieldErr msg={errs.kraj_id} />}
                     </div>
