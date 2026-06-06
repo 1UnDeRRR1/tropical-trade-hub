@@ -336,6 +336,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const { profile, roleKeys } = useCurrentProfile();
   const isSuper = roleKeys.includes("super_admin");
   const isImportMgr = roleKeys.includes("import_manager");
+  const isKierownik = roleKeys.includes("kierownik");
+  const canLoadManagers = isSuper || isKierownik;
 
   const [dostawcy, setDostawcy] = useState<DostawcaItem[]>([]);
   const [kraje, setKraje] = useState<KrajItem[]>([]);
