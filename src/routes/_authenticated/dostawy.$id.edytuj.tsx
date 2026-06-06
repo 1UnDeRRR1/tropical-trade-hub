@@ -13,6 +13,7 @@ function Page() {
   const { profile, roleKeys } = useCurrentProfile();
   const isSuper = roleKeys.includes("super_admin");
   const isImportMgr = roleKeys.includes("import_manager");
+  const isKierownik = roleKeys.includes("kierownik");
 
   const [data, setData] = useState<ExistingDostawa | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -29,7 +30,7 @@ function Page() {
         setErr(`Edycja możliwa tylko dla statusu draft / planned (obecny: ${d.status})`);
         setLoading(false); return;
       }
-      if (!isSuper && !(isImportMgr && d.import_manager_id === profile?.uzytkownik_id)) {
+      if (!isSuper && !isKierownik && !(isImportMgr && d.import_manager_id === profile?.uzytkownik_id)) {
         setErr("Brak uprawnień do edycji tej dostawy.");
         setLoading(false); return;
       }
@@ -68,7 +69,7 @@ function Page() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [id, isSuper, isImportMgr, profile?.uzytkownik_id]);
+  }, [id, isSuper, isImportMgr, isKierownik, profile?.uzytkownik_id]);
 
   return (
     <RoleGuard path="/dostawy">

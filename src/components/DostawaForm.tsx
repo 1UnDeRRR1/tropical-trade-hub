@@ -336,6 +336,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const { profile, roleKeys } = useCurrentProfile();
   const isSuper = roleKeys.includes("super_admin");
   const isImportMgr = roleKeys.includes("import_manager");
+  const isKierownik = roleKeys.includes("kierownik");
+  const canLoadManagers = isSuper || isKierownik;
 
   const [dostawcy, setDostawcy] = useState<DostawcaItem[]>([]);
   const [kraje, setKraje] = useState<KrajItem[]>([]);
@@ -406,7 +408,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         supabase.from("odmiany").select("odmiana_id, odmiana_original, nazwa_produktu_pl, produkt_id").order("odmiana_original"),
         supabase.from("opakowania").select("opakowanie_id, typ_opakowania_pl, wariant_opakowania_pl, material_tary").order("typ_opakowania_pl"),
         supabase.from("standardy_palet").select("produkt_id, opakowanie_id, iso3_kraju, liczba_opakowan_na_palecie, waga_netto_opakowania_kg, waga_brutto_opakowania_kg, waga_netto_palety_kg, waga_brutto_palety_z_paleta_kg"),
-        isSuper
+        canLoadManagers
           ? supabase.from("uzytkownicy").select("uzytkownik_id, imie_nazwisko, klucz_roli, status").eq("klucz_roli","import_manager").eq("status","aktywny")
           : Promise.resolve({ data: [] as Array<{ uzytkownik_id: string; imie_nazwisko: string | null }> }),
         supabase.from("aliasy_produktow").select("alias, produkt_id").not("produkt_id","is",null),
@@ -435,7 +437,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         waga_netto_opakowania_kg: toNum(r.waga_netto_opakowania_kg as string),
         waga_brutto_opakowania_kg: toNum(r.waga_brutto_opakowania_kg as string),
       })));
-      if (isSuper) {
+      if (canLoadManagers) {
         setManagers((u.data ?? []).map((x) => ({ id: x.uzytkownik_id, label: x.imie_nazwisko || x.uzytkownik_id })));
       } else if (isImportMgr && profile?.uzytkownik_id) {
         setManagers([{ id: profile.uzytkownik_id, label: profile.imie_nazwisko || profile.uzytkownik_id }]);
@@ -474,7 +476,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
       }
       setDostawcaAliases(da);
     })();
-  }, [isSuper, isImportMgr, profile?.uzytkownik_id, profile?.imie_nazwisko]);
+  }, [isSuper, isImportMgr, canLoadManagers, profile?.uzytkownik_id, profile?.imie_nazwisko]);
 
   // Hydrate produkt_query / kraj_query / opakowanie_query after labels load (edit mode)
   useEffect(() => {

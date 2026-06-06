@@ -7,13 +7,14 @@ function Page() {
   const { roleKeys } = useCurrentProfile();
   const isSuper = roleKeys.includes("super_admin");
   const isImportMgr = roleKeys.includes("import_manager");
-  if (!isSuper && !isImportMgr) {
+  const isKierownik = roleKeys.includes("kierownik");
+  if (!isSuper && !isImportMgr && !isKierownik) {
     return (
       <RoleGuard path="/dostawy">
         <div className="mx-auto max-w-md text-center py-16">
           <h1 className="text-2xl font-bold">Brak dostępu</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Tylko Import manager lub Superadministrator może tworzyć dostawy.
+            Tylko Kierownik, Import manager lub Superadministrator może tworzyć dostawy.
           </p>
         </div>
       </RoleGuard>
