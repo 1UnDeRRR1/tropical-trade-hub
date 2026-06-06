@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RoleGuard } from "@/components/RoleGuard";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -17,6 +18,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// ====================================================================
+// Vehicle capacity hard limits
+// ====================================================================
+const MAX_PALETY = 26;
+const MAX_BRUTTO_KG = 21500;
+
+// ====================================================================
+// Types
+// ====================================================================
 interface RefItem {
   id: string;
   label: string;
@@ -29,6 +39,10 @@ interface ProduktItem extends RefItem {
 
 interface OpakItem extends RefItem {
   material_canonical: "karton" | "drewno" | "plastik" | null;
+}
+
+interface OdmianaItem extends RefItem {
+  produkt_id: string | null;
 }
 
 interface DostawcaItem extends RefItem {
@@ -51,18 +65,20 @@ interface StandardRow {
 }
 
 type MaterialTary = "" | "karton" | "drewno" | "plastik";
+type OpakSource = "catalog" | "custom" | "none";
 
 interface PozycjaForm {
   produkt_id: string;
   produkt_query: string;
+  kraj_id: string;
+  kraj_query: string;
   odmiana_id: string;
-  opakowanie_source: "catalog" | "custom";
+  opakowanie_source: OpakSource;
   opakowanie_id: string;
   opakowanie_query: string;
   opakowanie_custom_text: string;
   material_tary: MaterialTary;
   material_autofilled: boolean;
-  kraj_id: string;
   palety: string;
   ilosc_opakowan: string;
   netto_kg: string;
@@ -76,6 +92,8 @@ interface PozycjaForm {
 const EMPTY_POZ: PozycjaForm = {
   produkt_id: "",
   produkt_query: "",
+  kraj_id: "",
+  kraj_query: "",
   odmiana_id: "",
   opakowanie_source: "catalog",
   opakowanie_id: "",
@@ -83,7 +101,6 @@ const EMPTY_POZ: PozycjaForm = {
   opakowanie_custom_text: "",
   material_tary: "",
   material_autofilled: false,
-  kraj_id: "",
   palety: "0",
   ilosc_opakowan: "",
   netto_kg: "",
@@ -94,12 +111,17 @@ const EMPTY_POZ: PozycjaForm = {
   notes: "",
 };
 
+// ====================================================================
+// Helpers
+// ====================================================================
 function canonicalMaterial(raw: string | null | undefined): "karton" | "drewno" | "plastik" | null {
   const v = (raw ?? "").toLowerCase().trim();
   if (!v) return null;
   if (["karton", "carton", "cardboard", "tektura", "tekturowa", "tekturowe"].includes(v)) return "karton";
   if (["drewno", "wood", "drewniana", "drewniane", "wooden"].includes(v)) return "drewno";
-  if (["plastik", "plastic", "plastikowa", "plastikowe", "pp", "pet", "hdpe", "ldpe", "ps", "eps", "styropian", "folia"].includes(v))
+  if (
+    ["plastik", "plastic", "plastikowa", "plastikowe", "pp", "pet", "hdpe", "ldpe", "ps", "eps", "styropian", "folia"].includes(v)
+  )
     return "plastik";
   return null;
 }
@@ -113,7 +135,7 @@ function normalize(s: string): string {
     .replace(/Ł/g, "l");
 }
 
-/** Word-prefix match: query matches start of any word in target (after normalize). */
+/** Word-prefix match: query matches start of any word in target. */
 function startsWithWord(target: string, query: string): boolean {
   const t = " " + normalize(target);
   const q = normalize(query);
@@ -127,6 +149,66 @@ function toNum(s: string | null | undefined): number | null {
   return isFinite(n) ? n : null;
 }
 
+function isBlank(s: string): boolean {
+  return s === null || s === undefined || String(s).trim() === "";
+}
+
+// ====================================================================
+// Calculation engine — one logical chain per position
+// ====================================================================
+interface CalcResult {
+  ilosc_opakowan: string;
+  netto_kg: string;
+  brutto_kg: string;
+}
+
+/**
+ * Recalculate downstream weights for a position when a catalog standard
+ * is available and weights were auto-filled (not manually overridden).
+ * Drives: palety -> total boxes -> netto, brutto.
+ */
+function calcFromStandard(palety: number, std: StandardRow): CalcResult {
+  const ilosc = std.liczba_opakowan_na_palecie ? std.liczba_opakowan_na_palecie * palety : null;
+  const netto = std.waga_netto_opakowania_kg && ilosc !== null ? std.waga_netto_opakowania_kg * ilosc : null;
+  const brutto = std.waga_brutto_opakowania_kg && ilosc !== null ? std.waga_brutto_opakowania_kg * ilosc : null;
+  return {
+    ilosc_opakowan: ilosc !== null ? String(Math.round(ilosc)) : "",
+    netto_kg: netto !== null ? netto.toFixed(2) : "",
+    brutto_kg: brutto !== null ? brutto.toFixed(2) : "",
+  };
+}
+
+// ====================================================================
+// Field-level errors
+// ====================================================================
+type FieldErrors = Partial<Record<keyof PozycjaForm | "opakowanie", string>>;
+
+function validatePosition(p: PozycjaForm): FieldErrors {
+  const e: FieldErrors = {};
+  if (!p.produkt_id) e.produkt_id = "Produkt wymagany (wybierz z listy)";
+  if (p.opakowanie_source === "catalog" && !p.opakowanie_id) e.opakowanie = "Opakowanie z katalogu wymagane";
+  if (p.opakowanie_source === "custom") {
+    const t = p.opakowanie_custom_text.trim();
+    if (!t) e.opakowanie_custom_text = "Wpisz własne opakowanie";
+    else if (t.length > 200) e.opakowanie_custom_text = "Max 200 znaków";
+  }
+  if (!p.material_tary) e.material_tary = "Materiał tary wymagany";
+  if (isBlank(p.palety) || Number(p.palety) < 0) e.palety = "Palety >= 0";
+  if (isBlank(p.netto_kg)) e.netto_kg = "Netto kg wymagane";
+  else if (Number(p.netto_kg) <= 0) e.netto_kg = "Netto kg musi być > 0";
+  if (isBlank(p.brutto_kg)) e.brutto_kg = "Brutto kg wymagane";
+  else if (Number(p.brutto_kg) <= 0) e.brutto_kg = "Brutto kg musi być > 0";
+  else if (!isBlank(p.netto_kg) && Number(p.brutto_kg) < Number(p.netto_kg))
+    e.brutto_kg = "Brutto kg nie może być mniejsze niż netto kg";
+  if (isBlank(p.cena_zakupu)) e.cena_zakupu = "Cena zakupu wymagana";
+  else if (Number(p.cena_zakupu) < 0) e.cena_zakupu = "Cena zakupu >= 0";
+  if (!["PLN", "EUR", "USD"].includes(p.waluta)) e.waluta = "PLN/EUR/USD";
+  return e;
+}
+
+// ====================================================================
+// Combobox
+// ====================================================================
 interface ComboProps {
   items: RefItem[];
   value: string;
@@ -138,6 +220,7 @@ interface ComboProps {
   extraTop?: React.ReactNode;
   maxItems?: number;
   filterFn?: (item: RefItem, query: string) => boolean;
+  invalid?: boolean;
 }
 
 function Combobox({
@@ -151,6 +234,7 @@ function Combobox({
   extraTop,
   maxItems = 50,
   filterFn,
+  invalid,
 }: ComboProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -175,6 +259,7 @@ function Combobox({
         <Input
           value={query}
           placeholder={placeholder}
+          className={cn(invalid && "border-destructive focus-visible:ring-destructive")}
           onFocus={() => setOpen(true)}
           onChange={(e) => {
             onQuery(e.target.value);
@@ -226,6 +311,19 @@ function Combobox({
   );
 }
 
+// Small inline error message
+function FieldErr({ msg }: { msg?: string }) {
+  if (!msg) return null;
+  return (
+    <p className="mt-1 text-xs text-destructive flex items-center gap-1">
+      <AlertCircle className="h-3 w-3" /> {msg}
+    </p>
+  );
+}
+
+// ====================================================================
+// Page
+// ====================================================================
 function Page() {
   const navigate = useNavigate();
   const { profile, roleKeys } = useCurrentProfile();
@@ -235,7 +333,7 @@ function Page() {
   const [dostawcy, setDostawcy] = useState<DostawcaItem[]>([]);
   const [kraje, setKraje] = useState<KrajItem[]>([]);
   const [produkty, setProdukty] = useState<ProduktItem[]>([]);
-  const [odmiany, setOdmiany] = useState<RefItem[]>([]);
+  const [odmiany, setOdmiany] = useState<OdmianaItem[]>([]);
   const [opakowania, setOpakowania] = useState<OpakItem[]>([]);
   const [managers, setManagers] = useState<RefItem[]>([]);
   const [standardy, setStandardy] = useState<StandardRow[]>([]);
@@ -252,8 +350,12 @@ function Page() {
   const [status, setStatus] = useState<"draft" | "planned">("draft");
   const [pozycje, setPozycje] = useState<PozycjaForm[]>([{ ...EMPTY_POZ }]);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitTried, setSubmitTried] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // -----------------------------------------------------------------
+  // Load reference data
+  // -----------------------------------------------------------------
   useEffect(() => {
     (async () => {
       const [d, k, p, o, op, st, u] = await Promise.all([
@@ -263,7 +365,10 @@ function Page() {
           .order("nazwa_dostawcy_original"),
         supabase.from("kraje").select("kraj_id, nazwa_pl, iso3").order("nazwa_pl"),
         supabase.from("produkty").select("produkt_id, nazwa_pl, aliasy_pl").order("nazwa_pl"),
-        supabase.from("odmiany").select("odmiana_id, odmiana_original, nazwa_produktu_pl").order("odmiana_original"),
+        supabase
+          .from("odmiany")
+          .select("odmiana_id, odmiana_original, nazwa_produktu_pl, produkt_id")
+          .order("odmiana_original"),
         supabase
           .from("opakowania")
           .select("opakowanie_id, typ_opakowania_pl, wariant_opakowania_pl, material_tary")
@@ -293,7 +398,14 @@ function Page() {
           };
         }),
       );
-      setKraje((k.data ?? []).map((x) => ({ id: x.kraj_id, label: x.nazwa_pl || x.kraj_id, iso3: x.iso3 ?? null })));
+      setKraje(
+        (k.data ?? []).map((x) => ({
+          id: x.kraj_id,
+          label: x.nazwa_pl || x.kraj_id,
+          search: `${x.nazwa_pl ?? ""} ${x.iso3 ?? ""}`,
+          iso3: x.iso3 ?? null,
+        })),
+      );
       setProdukty(
         (p.data ?? []).map((x) => ({
           id: x.produkt_id,
@@ -305,7 +417,8 @@ function Page() {
       setOdmiany(
         (o.data ?? []).map((x) => ({
           id: x.odmiana_id,
-          label: `${x.odmiana_original ?? x.odmiana_id} (${x.nazwa_produktu_pl ?? "—"})`,
+          label: x.odmiana_original ?? x.odmiana_id,
+          produkt_id: x.produkt_id ?? null,
         })),
       );
       setOpakowania(
@@ -344,9 +457,7 @@ function Page() {
     }
   }, [profile, isImportMgr, managerId]);
 
-  // Auto-fill kraj załadunku from selected dostawca.
-  // Rules: if user manually set it, never overwrite. If empty OR was auto-filled
-  // from previous supplier, update to new supplier kraj_id.
+  // Auto-fill loading country from supplier (unless user overrode it).
   useEffect(() => {
     if (!dostawcaId) return;
     const d = dostawcy.find((x) => x.id === dostawcaId);
@@ -374,23 +485,14 @@ function Page() {
     }
   };
 
-  const totals = useMemo(() => {
-    const palety = pozycje.reduce((s, p) => s + (Number(p.palety) || 0), 0);
-    const netto = pozycje.reduce((s, p) => s + (Number(p.netto_kg) || 0), 0);
-    const byWal = new Map<string, number>();
-    for (const p of pozycje) {
-      const val = (Number(p.netto_kg) || 0) * (Number(p.cena_zakupu) || 0);
-      byWal.set(p.waluta, (byWal.get(p.waluta) || 0) + val);
-    }
-    return { palety, netto, byWal };
-  }, [pozycje]);
-
+  // -----------------------------------------------------------------
+  // Row operations & calculation engine plumbing
+  // -----------------------------------------------------------------
   const addRow = () => setPozycje((p) => [...p, { ...EMPTY_POZ }]);
   const removeRow = (i: number) => setPozycje((p) => p.filter((_, idx) => idx !== i));
   const updateRow = (i: number, patch: Partial<PozycjaForm>) =>
     setPozycje((p) => p.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
-  /** Find a standardy_palet row for (produkt_id, opakowanie_id, kraj_id-via-iso3). */
   const findStandard = (produkt_id: string, opakowanie_id: string, kraj_id: string): StandardRow | null => {
     if (!produkt_id || !opakowanie_id) return null;
     const iso3 = kraje.find((k) => k.id === kraj_id)?.iso3 ?? null;
@@ -403,42 +505,50 @@ function Page() {
     return matches[0];
   };
 
-  /** Get suggested opakowanie_ids for given product (from standardy_palet). */
-  const suggestedOpakIds = (produkt_id: string): Set<string> => {
+  const suggestedOpakIds = (produkt_id: string, kraj_id: string): Set<string> => {
     const s = new Set<string>();
     if (!produkt_id) return s;
-    for (const r of standardy) if (r.produkt_id === produkt_id) s.add(r.opakowanie_id);
+    const iso3 = kraje.find((k) => k.id === kraj_id)?.iso3 ?? null;
+    for (const r of standardy) {
+      if (r.produkt_id !== produkt_id) continue;
+      if (iso3 && r.iso3_kraju && r.iso3_kraju.toUpperCase() !== iso3.toUpperCase()) continue;
+      s.add(r.opakowanie_id);
+    }
     return s;
   };
 
-  const autofillWeights = (i: number, patchBase: Partial<PozycjaForm>) => {
-    const merged: PozycjaForm = { ...pozycje[i], ...patchBase };
-    if (merged.opakowanie_source !== "catalog") return;
-    const std = findStandard(merged.produkt_id, merged.opakowanie_id, merged.kraj_id);
-    if (!std) return;
-    let palety = Number(merged.palety) || 0;
-    if (!palety) palety = 1;
-    const ilosc = std.liczba_opakowan_na_palecie ? std.liczba_opakowan_na_palecie * palety : null;
-    const netto = std.waga_netto_opakowania_kg && ilosc ? std.waga_netto_opakowania_kg * ilosc : null;
-    const brutto = std.waga_brutto_opakowania_kg && ilosc ? std.waga_brutto_opakowania_kg * ilosc : null;
-    updateRow(i, {
-      ...patchBase,
-      palety: String(palety),
-      ilosc_opakowan: ilosc !== null ? String(Math.round(ilosc)) : merged.ilosc_opakowan,
-      netto_kg: netto !== null ? netto.toFixed(2) : merged.netto_kg,
-      brutto_kg: brutto !== null ? brutto.toFixed(2) : merged.brutto_kg,
-      weights_autofilled: true,
-    });
+  /** Apply patch + recalc chain when applicable (catalog mode with standard). */
+  const applyChainedPatch = (i: number, patch: Partial<PozycjaForm>) => {
+    const merged: PozycjaForm = { ...pozycje[i], ...patch };
+    let finalPatch: Partial<PozycjaForm> = { ...patch };
+
+    if (merged.opakowanie_source === "catalog") {
+      const std = findStandard(merged.produkt_id, merged.opakowanie_id, merged.kraj_id);
+      if (std) {
+        const palety = Math.max(0, Number(merged.palety) || 0);
+        const calc = calcFromStandard(palety, std);
+        finalPatch = {
+          ...finalPatch,
+          ilosc_opakowan: calc.ilosc_opakowan || merged.ilosc_opakowan,
+          netto_kg: calc.netto_kg || merged.netto_kg,
+          brutto_kg: calc.brutto_kg || merged.brutto_kg,
+          weights_autofilled: true,
+        };
+      }
+    }
+    updateRow(i, finalPatch);
   };
 
   const onPickProdukt = (i: number, id: string, label: string) => {
     const cur = pozycje[i];
-    const patch: Partial<PozycjaForm> = { produkt_id: id, produkt_query: label };
-    // If selected opakowanie no longer relevant, do not force-reset; user can change it.
-    updateRow(i, patch);
-    if (id && cur.opakowanie_source === "catalog" && cur.opakowanie_id) {
-      autofillWeights(i, patch);
-    }
+    // Reset odmiana if it doesn't match new produkt
+    const od = odmiany.find((x) => x.id === cur.odmiana_id);
+    const odmiana_id = od && od.produkt_id !== id ? "" : cur.odmiana_id;
+    applyChainedPatch(i, { produkt_id: id, produkt_query: label, odmiana_id });
+  };
+
+  const onPickKrajPoch = (i: number, id: string, label: string) => {
+    applyChainedPatch(i, { kraj_id: id, kraj_query: label });
   };
 
   const onPickOpakowanie = (i: number, id: string, label: string) => {
@@ -454,8 +564,7 @@ function Page() {
       patch.material_tary = opak.material_canonical;
       patch.material_autofilled = true;
     }
-    updateRow(i, patch);
-    if (id) autofillWeights(i, patch);
+    applyChainedPatch(i, patch);
   };
 
   const onUseCustomOpakowanie = (i: number) => {
@@ -468,69 +577,83 @@ function Page() {
     });
   };
 
-  const onPaletyChange = (i: number, v: string) => {
-    const cur = pozycje[i];
-    if (cur.opakowanie_source === "catalog" && cur.weights_autofilled) {
-      const std = findStandard(cur.produkt_id, cur.opakowanie_id, cur.kraj_id);
-      if (std) {
-        const palety = Number(v) || 0;
-        const ilosc = std.liczba_opakowan_na_palecie ? std.liczba_opakowan_na_palecie * palety : null;
-        const netto = std.waga_netto_opakowania_kg && ilosc ? std.waga_netto_opakowania_kg * ilosc : null;
-        const brutto = std.waga_brutto_opakowania_kg && ilosc ? std.waga_brutto_opakowania_kg * ilosc : null;
-        updateRow(i, {
-          palety: v,
-          ilosc_opakowan: ilosc !== null ? String(Math.round(ilosc)) : cur.ilosc_opakowan,
-          netto_kg: netto !== null ? netto.toFixed(2) : cur.netto_kg,
-          brutto_kg: brutto !== null ? brutto.toFixed(2) : cur.brutto_kg,
-        });
-        return;
-      }
-    }
-    updateRow(i, { palety: v });
+  const onUseNoOpakowanie = (i: number) => {
+    updateRow(i, {
+      opakowanie_source: "none",
+      opakowanie_id: "",
+      opakowanie_query: "",
+      opakowanie_custom_text: "",
+      material_autofilled: false,
+      weights_autofilled: false,
+    });
   };
 
-  const onPickKraj = (i: number, id: string) => {
-    const patch: Partial<PozycjaForm> = { kraj_id: id };
-    updateRow(i, patch);
-    autofillWeights(i, patch);
+  const onBackToCatalog = (i: number) => {
+    updateRow(i, {
+      opakowanie_source: "catalog",
+      opakowanie_custom_text: "",
+      material_autofilled: false,
+      weights_autofilled: false,
+    });
+  };
+
+  const onPaletyChange = (i: number, v: string) => {
+    applyChainedPatch(i, { palety: v });
   };
 
   const onMaterialChange = (i: number, v: "karton" | "drewno" | "plastik") => {
     updateRow(i, { material_tary: v, material_autofilled: false });
   };
 
-  const validate = (): string | null => {
-    if (!dataZaladunku) return "Data załadunku wymagana";
-    if (!dataDostawy) return "Data dostawy / przyjazdu wymagana";
-    if (!dostawcaId) return "Dostawca wymagany";
-    if (!managerId) return "Manager importu wymagany";
-    if (pozycje.length === 0) return "Co najmniej jedna pozycja wymagana";
-    for (let i = 0; i < pozycje.length; i++) {
-      const p = pozycje[i];
-      const n = i + 1;
-      if (!p.produkt_id) return `Pozycja ${n}: produkt wymagany (wybierz z listy)`;
-      if (p.opakowanie_source === "catalog") {
-        if (!p.opakowanie_id) return `Pozycja ${n}: opakowanie wymagane`;
-      } else {
-        const t = p.opakowanie_custom_text.trim();
-        if (!t) return `Pozycja ${n}: wpisz własne opakowanie`;
-        if (t.length > 200) return `Pozycja ${n}: opakowanie max 200 znaków`;
-      }
-      if (!p.material_tary) return `Pozycja ${n}: materiał tary wymagany`;
-      if (!(Number(p.netto_kg) > 0)) return `Pozycja ${n}: netto kg musi być > 0`;
-      if (!(Number(p.palety) >= 0)) return `Pozycja ${n}: palety >= 0`;
-      if (!(Number(p.cena_zakupu) >= 0)) return `Pozycja ${n}: cena zakupu >= 0`;
-      if (!["PLN", "EUR", "USD"].includes(p.waluta)) return `Pozycja ${n}: waluta PLN/EUR/USD`;
-    }
-    return null;
-  };
+  // -----------------------------------------------------------------
+  // Derived: per-line errors, totals, capacity
+  // -----------------------------------------------------------------
+  const lineErrors: FieldErrors[] = useMemo(() => pozycje.map(validatePosition), [pozycje]);
 
+  const totals = useMemo(() => {
+    const palety = pozycje.reduce((s, p) => s + (Number(p.palety) || 0), 0);
+    const netto = pozycje.reduce((s, p) => s + (Number(p.netto_kg) || 0), 0);
+    const brutto = pozycje.reduce((s, p) => s + (Number(p.brutto_kg) || 0), 0);
+    const byWal = new Map<string, number>();
+    for (const p of pozycje) {
+      const val = (Number(p.netto_kg) || 0) * (Number(p.cena_zakupu) || 0);
+      byWal.set(p.waluta, (byWal.get(p.waluta) || 0) + val);
+    }
+    return { palety, netto, brutto, byWal };
+  }, [pozycje]);
+
+  const capacityErrors: string[] = useMemo(() => {
+    const errs: string[] = [];
+    if (totals.palety > MAX_PALETY)
+      errs.push(`Łączna liczba palet ${totals.palety} przekracza limit auta (${MAX_PALETY}).`);
+    if (totals.brutto > MAX_BRUTTO_KG)
+      errs.push(`Łączna waga brutto ${totals.brutto.toFixed(2)} kg przekracza limit auta (${MAX_BRUTTO_KG} kg).`);
+    return errs;
+  }, [totals]);
+
+  const headerErrors: string[] = useMemo(() => {
+    const errs: string[] = [];
+    if (!dataZaladunku) errs.push("Data załadunku wymagana");
+    if (!dataDostawy) errs.push("Data dostawy / przyjazdu wymagana");
+    if (!dostawcaId) errs.push("Dostawca wymagany");
+    if (!managerId) errs.push("Manager importu wymagany");
+    return errs;
+  }, [dataZaladunku, dataDostawy, dostawcaId, managerId]);
+
+  const hasAnyError =
+    headerErrors.length > 0 ||
+    capacityErrors.length > 0 ||
+    lineErrors.some((e) => Object.keys(e).length > 0);
+
+  // -----------------------------------------------------------------
+  // Submit
+  // -----------------------------------------------------------------
   const submit = async (s: "draft" | "planned") => {
-    setError(null);
+    setSubmitError(null);
+    setSubmitTried(true);
     setStatus(s);
-    const v = validate();
-    if (v) {
-      setError(v);
+    if (hasAnyError) {
+      setSubmitError("Formularz zawiera błędy. Popraw zaznaczone pola.");
       return;
     }
     setSaving(true);
@@ -545,7 +668,7 @@ function Page() {
       palety: Number(p.palety) || 0,
       ilosc_opakowan: p.ilosc_opakowan === "" ? null : Number(p.ilosc_opakowan),
       netto_kg: Number(p.netto_kg),
-      brutto_kg: p.brutto_kg === "" ? null : Number(p.brutto_kg),
+      brutto_kg: Number(p.brutto_kg),
       cena_zakupu: Number(p.cena_zakupu),
       waluta: p.waluta,
       notes: p.notes || null,
@@ -562,7 +685,7 @@ function Page() {
     });
     setSaving(false);
     if (rpcErr) {
-      setError(rpcErr.message);
+      setSubmitError(rpcErr.message);
       return;
     }
     navigate({ to: "/dostawy/$id", params: { id: data as string } });
@@ -582,10 +705,9 @@ function Page() {
   }
 
   const selectedDostawca = dostawcy.find((x) => x.id === dostawcaId);
-  const supplierKrajLabel =
-    selectedDostawca?.kraj_id
-      ? kraje.find((k) => k.id === selectedDostawca.kraj_id)?.label ?? selectedDostawca.kraj_id
-      : null;
+  const supplierKrajLabel = selectedDostawca?.kraj_id
+    ? kraje.find((k) => k.id === selectedDostawca.kraj_id)?.label ?? selectedDostawca.kraj_id
+    : null;
 
   return (
     <RoleGuard path="/dostawy">
@@ -593,13 +715,17 @@ function Page() {
         <div>
           <h1 className="text-2xl font-bold">Nowa dostawa</h1>
           <p className="text-sm text-muted-foreground">
-            Każda pozycja otrzymuje własny, unikalny identyfikator (position_id).
+            Każda pozycja otrzymuje własny, unikalny identyfikator wewnętrzny.
           </p>
         </div>
 
-        {error && (
-          <Card>
-            <CardContent className="py-3 text-sm text-destructive">{error}</CardContent>
+        {submitTried && (headerErrors.length > 0 || capacityErrors.length > 0 || submitError) && (
+          <Card className="border-destructive">
+            <CardContent className="py-3 text-sm text-destructive space-y-1">
+              {headerErrors.map((m, i) => <div key={`h${i}`}>• {m}</div>)}
+              {capacityErrors.map((m, i) => <div key={`c${i}`}>• {m}</div>)}
+              {submitError && <div>• {submitError}</div>}
+            </CardContent>
           </Card>
         )}
 
@@ -610,16 +736,28 @@ function Page() {
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Data załadunku *</Label>
-              <Input type="date" value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)} />
+              <Input
+                type="date"
+                value={dataZaladunku}
+                onChange={(e) => setDataZaladunku(e.target.value)}
+                className={cn(submitTried && !dataZaladunku && "border-destructive")}
+              />
             </div>
             <div>
               <Label>Data dostawy / przyjazdu *</Label>
-              <Input type="date" value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)} />
+              <Input
+                type="date"
+                value={dataDostawy}
+                onChange={(e) => setDataDostawy(e.target.value)}
+                className={cn(submitTried && !dataDostawy && "border-destructive")}
+              />
             </div>
             <div>
               <Label>Dostawca *</Label>
               <Select value={dostawcaId} onValueChange={setDostawcaId}>
-                <SelectTrigger><SelectValue placeholder="Wybierz dostawcę" /></SelectTrigger>
+                <SelectTrigger className={cn(submitTried && !dostawcaId && "border-destructive")}>
+                  <SelectValue placeholder="Wybierz dostawcę" />
+                </SelectTrigger>
                 <SelectContent>
                   {dostawcy.map((x) => (
                     <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>
@@ -649,7 +787,9 @@ function Page() {
             <div>
               <Label>Manager importu *</Label>
               <Select value={managerId} onValueChange={setManagerId} disabled={isImportMgr && !isSuper}>
-                <SelectTrigger><SelectValue placeholder="Wybierz" /></SelectTrigger>
+                <SelectTrigger className={cn(submitTried && !managerId && "border-destructive")}>
+                  <SelectValue placeholder="Wybierz" />
+                </SelectTrigger>
                 <SelectContent>
                   {managers.map((x) => (
                     <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>
@@ -664,6 +804,42 @@ function Page() {
           </CardContent>
         </Card>
 
+        {/* Capacity preview */}
+        <Card className={cn(capacityErrors.length > 0 && "border-destructive")}>
+          <CardHeader>
+            <CardTitle>Wykorzystanie auta</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div>
+              <div className="text-muted-foreground">Palety</div>
+              <div className={cn("font-semibold", totals.palety > MAX_PALETY && "text-destructive")}>
+                {totals.palety} / {MAX_PALETY}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Wolne palety</div>
+              <div className="font-semibold">{Math.max(0, MAX_PALETY - totals.palety)}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Brutto kg</div>
+              <div className={cn("font-semibold", totals.brutto > MAX_BRUTTO_KG && "text-destructive")}>
+                {totals.brutto.toFixed(2)} / {MAX_BRUTTO_KG}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Wolne kg</div>
+              <div className="font-semibold">{Math.max(0, MAX_BRUTTO_KG - totals.brutto).toFixed(2)}</div>
+            </div>
+            {capacityErrors.length > 0 && (
+              <div className="col-span-2 md:col-span-4 text-destructive text-xs space-y-1">
+                {capacityErrors.map((m, i) => (
+                  <div key={i} className="flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {m}</div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle>Pozycje</CardTitle>
@@ -673,17 +849,26 @@ function Page() {
           </CardHeader>
           <CardContent className="space-y-4">
             {pozycje.map((p, i) => {
-              const suggested = suggestedOpakIds(p.produkt_id);
-              // Sorted opakowania: suggested first, then rest
+              const errs = lineErrors[i];
+              const showErrs = submitTried;
+              const odmianyForProdukt = p.produkt_id
+                ? odmiany.filter((o) => o.produkt_id === p.produkt_id)
+                : [];
+              const suggested = suggestedOpakIds(p.produkt_id, p.kraj_id);
               const opakSorted: OpakItem[] = p.produkt_id
                 ? [
                     ...opakowania.filter((o) => suggested.has(o.id)),
                     ...opakowania.filter((o) => !suggested.has(o.id)),
                   ]
                 : opakowania;
-              const opakSelectedLabel = p.opakowanie_source === "catalog" && p.opakowanie_id
-                ? (opakowania.find((o) => o.id === p.opakowanie_id)?.label ?? "")
-                : p.opakowanie_query;
+              const opakSelectedLabel =
+                p.opakowanie_source === "catalog" && p.opakowanie_id
+                  ? opakowania.find((o) => o.id === p.opakowanie_id)?.label ?? ""
+                  : p.opakowanie_query;
+              const produktLabel =
+                p.produkt_query || (p.produkt_id ? produkty.find((x) => x.id === p.produkt_id)?.label ?? "" : "");
+              const krajLabel =
+                p.kraj_query || (p.kraj_id ? kraje.find((x) => x.id === p.kraj_id)?.label ?? "" : "");
 
               return (
                 <div key={i} className="rounded-md border p-3 space-y-3">
@@ -696,86 +881,144 @@ function Page() {
                     )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* 1. Produkt */}
                     <div>
                       <Label>Produkt * (wpisz min. 2 znaki)</Label>
                       <Combobox
                         items={produkty}
                         value={p.produkt_id}
-                        query={p.produkt_query || (p.produkt_id ? produkty.find((x) => x.id === p.produkt_id)?.label ?? "" : "")}
-                        onQuery={(s) => updateRow(i, { produkt_query: s, produkt_id: "" })}
+                        query={produktLabel}
+                        onQuery={(s) => updateRow(i, { produkt_query: s, produkt_id: "", odmiana_id: "" })}
                         onPick={(id, label) => onPickProdukt(i, id, label)}
                         placeholder="Np. banan, ananas…"
+                        invalid={showErrs && !!errs.produkt_id}
+                      />
+                      {showErrs && <FieldErr msg={errs.produkt_id} />}
+                    </div>
+
+                    {/* 2. Kraj pochodzenia */}
+                    <div>
+                      <Label>Kraj pochodzenia (wpisz min. 2 znaki)</Label>
+                      <Combobox
+                        items={kraje}
+                        value={p.kraj_id}
+                        query={krajLabel}
+                        onQuery={(s) => updateRow(i, { kraj_query: s, kraj_id: "" })}
+                        onPick={(id, label) => onPickKrajPoch(i, id, label)}
+                        placeholder="Np. Hiszpania, Maroko…"
                       />
                     </div>
+
+                    {/* 3. Odmiana */}
                     <div>
                       <Label>Odmiana</Label>
-                      <Select value={p.odmiana_id} onValueChange={(v) => updateRow(i, { odmiana_id: v })}>
-                        <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                        <SelectContent>
-                          {odmiany.slice(0, 200).map((x) => (
-                            <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label>Opakowanie *</Label>
-                      {p.opakowanie_source === "custom" ? (
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Wpisz nazwę własnego opakowania (max 200 znaków)"
-                            maxLength={200}
-                            value={p.opakowanie_custom_text}
-                            onChange={(e) => updateRow(i, { opakowanie_custom_text: e.target.value })}
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              updateRow(i, {
-                                opakowanie_source: "catalog",
-                                opakowanie_custom_text: "",
-                              })
-                            }
-                          >
-                            Wróć do katalogu
-                          </Button>
-                        </div>
+                      {!p.produkt_id ? (
+                        <p className="text-xs text-muted-foreground py-2">
+                          Najpierw wybierz produkt.
+                        </p>
+                      ) : odmianyForProdukt.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-2">
+                          Brak odmian dla wybranego produktu
+                        </p>
                       ) : (
-                        <Combobox
-                          items={opakSorted}
-                          value={p.opakowanie_id}
-                          query={opakSelectedLabel}
-                          onQuery={(s) => updateRow(i, { opakowanie_query: s, opakowanie_id: "" })}
-                          onPick={(id, label) => onPickOpakowanie(i, id, label)}
-                          placeholder={p.produkt_id ? "Wyszukaj opakowanie…" : "Wybierz najpierw produkt, lub wyszukaj"}
-                          minChars={2}
-                          extraTop={
-                            <button
-                              type="button"
-                              className="block w-full text-left px-3 py-2 text-sm bg-accent/40 hover:bg-accent border-b font-medium"
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                onUseCustomOpakowanie(i);
-                              }}
-                            >
-                              ➕ Wpisz własne opakowanie
-                            </button>
-                          }
-                          filterFn={(it, q) => {
-                            if (q.trim().length < 1) return suggested.has(it.id);
-                            return startsWithWord(it.search ?? it.label, q);
-                          }}
+                        <Select value={p.odmiana_id} onValueChange={(v) => updateRow(i, { odmiana_id: v })}>
+                          <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                          <SelectContent>
+                            {odmianyForProdukt.map((x) => (
+                              <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+
+                    {/* 4. Opakowanie (optional) — catalog / custom / none */}
+                    <div className="md:col-span-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <Label>Opakowanie</Label>
+                        <div className="flex gap-1 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => onBackToCatalog(i)}
+                            className={cn(
+                              "px-2 py-0.5 rounded border",
+                              p.opakowanie_source === "catalog" ? "bg-accent" : "hover:bg-accent",
+                            )}
+                          >
+                            Z katalogu
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onUseCustomOpakowanie(i)}
+                            className={cn(
+                              "px-2 py-0.5 rounded border",
+                              p.opakowanie_source === "custom" ? "bg-accent" : "hover:bg-accent",
+                            )}
+                          >
+                            Własne
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onUseNoOpakowanie(i)}
+                            className={cn(
+                              "px-2 py-0.5 rounded border",
+                              p.opakowanie_source === "none" ? "bg-accent" : "hover:bg-accent",
+                            )}
+                          >
+                            Brak
+                          </button>
+                        </div>
+                      </div>
+                      {p.opakowanie_source === "custom" && (
+                        <Input
+                          placeholder="Wpisz nazwę własnego opakowania (max 200 znaków)"
+                          maxLength={200}
+                          value={p.opakowanie_custom_text}
+                          onChange={(e) => updateRow(i, { opakowanie_custom_text: e.target.value })}
+                          className={cn(showErrs && errs.opakowanie_custom_text && "border-destructive")}
                         />
                       )}
-                      {p.produkt_id && p.opakowanie_source === "catalog" && suggested.size > 0 && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Pokazujemy najpierw opakowania znane dla tego produktu ({suggested.size}).
+                      {p.opakowanie_source === "catalog" && (
+                        <>
+                          <Combobox
+                            items={opakSorted}
+                            value={p.opakowanie_id}
+                            query={opakSelectedLabel}
+                            onQuery={(s) => updateRow(i, { opakowanie_query: s, opakowanie_id: "" })}
+                            onPick={(id, label) => onPickOpakowanie(i, id, label)}
+                            placeholder={p.produkt_id ? "Wyszukaj opakowanie…" : "Wybierz produkt lub wpisz min. 2 znaki"}
+                            minChars={2}
+                            invalid={showErrs && !!errs.opakowanie}
+                            extraTop={
+                              <button
+                                type="button"
+                                className="block w-full text-left px-3 py-2 text-sm bg-accent/40 hover:bg-accent border-b font-medium"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  onUseCustomOpakowanie(i);
+                                }}
+                              >
+                                ➕ Wpisz własne opakowanie
+                              </button>
+                            }
+                          />
+                          {p.produkt_id && suggested.size > 0 && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Pokazujemy najpierw opakowania znane dla tego produktu ({suggested.size}).
+                            </p>
+                          )}
+                        </>
+                      )}
+                      {p.opakowanie_source === "none" && (
+                        <p className="text-xs text-muted-foreground py-1">
+                          Bez opakowania. Wprowadź ręcznie palety, wagi i materiał tary.
                         </p>
                       )}
+                      {showErrs && <FieldErr msg={errs.opakowanie ?? errs.opakowanie_custom_text} />}
                     </div>
-                    <div>
+
+                    {/* 5. Materiał tary */}
+                    <div className="md:col-span-2">
                       <Label>Materiał tary *</Label>
                       <div className="flex gap-2 mt-1">
                         {(["karton", "drewno", "plastik"] as const).map((m) => (
@@ -785,23 +1028,16 @@ function Page() {
                             size="sm"
                             variant={p.material_tary === m ? "default" : "outline"}
                             onClick={() => onMaterialChange(i, m)}
+                            className={cn(showErrs && errs.material_tary && !p.material_tary && "border-destructive")}
                           >
                             {m === "karton" ? "Karton" : m === "drewno" ? "Drewno" : "Plastik"}
                           </Button>
                         ))}
                       </div>
+                      {showErrs && <FieldErr msg={errs.material_tary} />}
                     </div>
-                    <div>
-                      <Label>Kraj pochodzenia</Label>
-                      <Select value={p.kraj_id} onValueChange={(v) => onPickKraj(i, v)}>
-                        <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                        <SelectContent>
-                          {kraje.map((x) => (
-                            <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+
+                    {/* 6. Palety */}
                     <div>
                       <Label>Palety</Label>
                       <Input
@@ -810,8 +1046,12 @@ function Page() {
                         step="1"
                         value={p.palety}
                         onChange={(e) => onPaletyChange(i, e.target.value)}
+                        className={cn(showErrs && errs.palety && "border-destructive")}
                       />
+                      {showErrs && <FieldErr msg={errs.palety} />}
                     </div>
+
+                    {/* 7. Ilość opakowań */}
                     <div>
                       <Label>Ilość opakowań</Label>
                       <Input
@@ -819,9 +1059,13 @@ function Page() {
                         min="0"
                         step="1"
                         value={p.ilosc_opakowan}
-                        onChange={(e) => updateRow(i, { ilosc_opakowan: e.target.value, weights_autofilled: false })}
+                        onChange={(e) =>
+                          updateRow(i, { ilosc_opakowan: e.target.value, weights_autofilled: false })
+                        }
                       />
                     </div>
+
+                    {/* 8. Netto */}
                     <div>
                       <Label>Netto (kg) *</Label>
                       <Input
@@ -829,23 +1073,45 @@ function Page() {
                         min="0"
                         step="0.01"
                         value={p.netto_kg}
-                        onChange={(e) => updateRow(i, { netto_kg: e.target.value, weights_autofilled: false })}
+                        onChange={(e) =>
+                          updateRow(i, { netto_kg: e.target.value, weights_autofilled: false })
+                        }
+                        className={cn(showErrs && errs.netto_kg && "border-destructive")}
                       />
+                      {showErrs && <FieldErr msg={errs.netto_kg} />}
                     </div>
+
+                    {/* 9. Brutto */}
                     <div>
-                      <Label>Brutto (kg)</Label>
+                      <Label>Brutto (kg) *</Label>
                       <Input
                         type="number"
                         min="0"
                         step="0.01"
                         value={p.brutto_kg}
-                        onChange={(e) => updateRow(i, { brutto_kg: e.target.value, weights_autofilled: false })}
+                        onChange={(e) =>
+                          updateRow(i, { brutto_kg: e.target.value, weights_autofilled: false })
+                        }
+                        className={cn(showErrs && errs.brutto_kg && "border-destructive")}
                       />
+                      {showErrs && <FieldErr msg={errs.brutto_kg} />}
                     </div>
+
+                    {/* 10. Cena zakupu */}
                     <div>
                       <Label>Cena zakupu *</Label>
-                      <Input type="number" min="0" step="0.01" value={p.cena_zakupu} onChange={(e) => updateRow(i, { cena_zakupu: e.target.value })} />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={p.cena_zakupu}
+                        onChange={(e) => updateRow(i, { cena_zakupu: e.target.value })}
+                        className={cn(showErrs && errs.cena_zakupu && "border-destructive")}
+                      />
+                      {showErrs && <FieldErr msg={errs.cena_zakupu} />}
                     </div>
+
+                    {/* 11. Waluta */}
                     <div>
                       <Label>Waluta *</Label>
                       <Select value={p.waluta} onValueChange={(v) => updateRow(i, { waluta: v })}>
@@ -857,6 +1123,8 @@ function Page() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    {/* 12. Notatki */}
                     <div className="md:col-span-2">
                       <Label>Notatki</Label>
                       <Input value={p.notes} onChange={(e) => updateRow(i, { notes: e.target.value })} />
@@ -874,8 +1142,9 @@ function Page() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div>Liczba pozycji: <strong>{pozycje.length}</strong></div>
-            <div>Razem palet: <strong>{totals.palety}</strong></div>
+            <div>Razem palet: <strong>{totals.palety}</strong> / {MAX_PALETY}</div>
             <div>Razem netto (kg): <strong>{totals.netto.toFixed(2)}</strong></div>
+            <div>Razem brutto (kg): <strong>{totals.brutto.toFixed(2)}</strong> / {MAX_BRUTTO_KG}</div>
             {[...totals.byWal.entries()].map(([w, v]) => (
               <div key={w}>Wartość ({w}): <strong>{v.toFixed(2)}</strong></div>
             ))}

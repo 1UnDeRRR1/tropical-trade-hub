@@ -35,7 +35,7 @@ interface Pozycja {
   produkt_id: string;
   odmiana_id: string | null;
   opakowanie_id: string | null;
-  opakowanie_source: "catalog" | "custom";
+  opakowanie_source: "catalog" | "custom" | "none";
   opakowanie_custom_text: string | null;
   material_tary: "karton" | "drewno" | "plastik";
   kraj_id: string | null;
@@ -56,6 +56,7 @@ function materialLabel(m: string): string {
 }
 
 function opakLabel(p: Pozycja, catalogMap: Map<string, string>): string {
+  if (p.opakowanie_source === "none") return "Bez opakowania";
   if (p.opakowanie_source === "custom") return p.opakowanie_custom_text || "—";
   if (p.opakowanie_id) return catalogMap.get(p.opakowanie_id) ?? p.opakowanie_id;
   return "—";
@@ -294,7 +295,7 @@ function Page() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>position_id</TableHead>
+                        <TableHead className="w-10">#</TableHead>
                         <TableHead>Produkt</TableHead>
                         <TableHead>Odmiana</TableHead>
                         <TableHead>Opakowanie</TableHead>
@@ -309,11 +310,11 @@ function Page() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pozycje.map((p) => {
+                      {pozycje.map((p, idx) => {
                         const st = statuses.get(p.position_id);
                         return (
                           <TableRow key={p.id}>
-                            <TableCell className="font-mono text-xs">{p.position_id}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
                             <TableCell>{labels.produkty.get(p.produkt_id) ?? p.produkt_id}</TableCell>
                             <TableCell>{p.odmiana_id ? (labels.odmiany.get(p.odmiana_id) ?? p.odmiana_id) : "—"}</TableCell>
                             <TableCell>
@@ -339,17 +340,20 @@ function Page() {
 
                 {/* Mobile: cards */}
                 <div className="md:hidden p-3 space-y-2">
-                  {pozycje.map((p) => {
+                  {pozycje.map((p, idx) => {
                     const st = statuses.get(p.position_id);
                     return (
                       <div key={p.id} className="rounded-md border p-3 space-y-1 text-sm">
-                        <div className="font-mono text-xs text-primary">{p.position_id}</div>
+                        <div className="text-xs text-muted-foreground">Pozycja {idx + 1}</div>
                         <div className="font-medium">{labels.produkty.get(p.produkt_id) ?? p.produkt_id}</div>
                         <div className="text-xs text-muted-foreground">
                           {p.odmiana_id ? (labels.odmiany.get(p.odmiana_id) ?? p.odmiana_id) : "—"}
                           {" · "}
-                          {opakLabel(p, labels.opakowania)}
-                          {p.opakowanie_source === "custom" && " (własne)"}
+                          {p.opakowanie_source === "custom"
+                            ? `${p.opakowanie_custom_text || "—"} (własne)`
+                            : p.opakowanie_source === "none"
+                              ? "Bez opakowania"
+                              : opakLabel(p, labels.opakowania)}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           Materiał tary: <strong>{materialLabel(p.material_tary)}</strong>
