@@ -246,7 +246,7 @@ function calculatePositionLine(
 // ====================================================================
 type FieldErrors = Partial<Record<keyof PozycjaForm | "opakowanie", string>>;
 
-function validatePosition(p: PozycjaForm): FieldErrors {
+function validatePosition(p: PozycjaForm, standard: StandardRow | null = null): FieldErrors {
   const e: FieldErrors = {};
   if (!p.produkt_id) e.produkt_id = "Produkt wymagany (wybierz z listy)";
   if (!p.kraj_id) e.kraj_id = "Kraj pochodzenia wymagany (wybierz z listy)";
@@ -271,6 +271,12 @@ function validatePosition(p: PozycjaForm): FieldErrors {
   if (isBlank(p.cena_zakupu)) e.cena_zakupu = "Cena zakupu wymagana";
   else if (cena === null || cena < 0) e.cena_zakupu = "Cena zakupu >= 0";
   if (!["PLN", "EUR", "USD"].includes(p.waluta)) e.waluta = "PLN/EUR/USD";
+  if (p.opakowanie_source === "catalog" && standard?.liczba_opakowan_na_palecie !== null) {
+    const expectedBoxes = palety !== null ? palety * standard.liczba_opakowan_na_palecie : null;
+    if (differsFromExpected(p.ilosc_opakowan, expectedBoxes)) {
+      e.ilosc_opakowan = `Standard wymaga ${fmtAmount(expectedBoxes ?? 0, 0)} opak. dla ${p.palety || 0} palet`;
+    }
+  }
   return e;
 }
 
