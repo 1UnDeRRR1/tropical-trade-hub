@@ -144,8 +144,14 @@
 }
 
 @keyframes field-invalid-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 oklch(from var(--destructive) l c h / 0); }
-  50% { box-shadow: 0 0 0 4px oklch(from var(--destructive) l c h / 0.45); }
+  0%, 100% {
+    box-shadow: 0 0 0 0 oklch(from var(--destructive) l c h / 0);
+    background-color: oklch(from var(--destructive) l c h / 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px oklch(from var(--destructive) l c h / 0.45);
+    background-color: oklch(from var(--destructive) l c h / 0.18);
+  }
 }
 .field-invalid-pulse {
   animation: field-invalid-pulse 0.35s ease-in-out 3;
