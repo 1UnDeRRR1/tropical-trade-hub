@@ -78,9 +78,10 @@ function Page() {
   const { profile, roleKeys } = useCurrentProfile();
   const isSuper = roleKeys.includes("super_admin");
   const isImportMgr = roleKeys.includes("import_manager");
+  const isKierownik = roleKeys.includes("kierownik");
   const canSeeFinance =
     isSuper ||
-    roleKeys.includes("kierownik") ||
+    isKierownik ||
     roleKeys.includes("asystent_kierownika") ||
     isImportMgr;
 
