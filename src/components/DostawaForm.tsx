@@ -952,15 +952,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 }
               }}
               onBlurInput={() => {
-                setTimeout(() => {
-                  if (!dostawcaId && dostawcaQuery.trim()) {
-                    setDostawcaQuery("");
-                    triggerShake();
-                  }
-                }, 220);
+                if (!dostawcaId && dostawcaQuery.trim()) {
+                  setDostawcaQuery("");
+                  triggerFieldFeedback("dostawca");
+                }
               }}
               placeholder="Wpisz nazwę dostawcy"
               invalid={submitTried && !dostawcaId}
+              invalidPulse={shouldPulse("dostawca", submitTried && !dostawcaId)}
             />
             {submitTried && !dostawcaId && (
               <FieldErr msg={dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany"} />
@@ -990,15 +989,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 setKrajAutofilledFromSupplier(null);
               }}
               onBlurInput={() => {
-                setTimeout(() => {
-                  if (!krajId && krajZaladunkuQuery.trim()) {
-                    setKrajZaladunkuQuery("");
-                    triggerShake();
-                  }
-                }, 220);
+                if (!krajId && krajZaladunkuQuery.trim()) {
+                  setKrajZaladunkuQuery("");
+                  triggerFieldFeedback("kraj_zaladunku");
+                }
               }}
               placeholder="Wpisz nazwę kraju"
               invalid={submitTried && !krajId}
+              invalidPulse={shouldPulse("kraj_zaladunku", submitTried && !krajId)}
             />
             {submitTried && !krajId && (
               <FieldErr msg={krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany"} />
@@ -1021,7 +1019,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             <div>
               <Label>Data załadunku *</Label>
               <Input type="date" min={todayStr} value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
-                     className={cn(submitTried && (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive field-invalid-pulse")} />
+                     className={cn("h-10 min-w-0 text-sm", submitTried && (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive", shouldPulse("data_zaladunku", submitTried && (!dataZaladunku || dataZaladunku < todayStr)) && "field-invalid-pulse")} />
               {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
               {submitTried && dataZaladunku && dataZaladunku < todayStr && (
                 <FieldErr msg="Data załadunku nie może być wcześniejsza niż dzisiaj" />
@@ -1031,7 +1029,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             <div>
               <Label>Data dostawy *</Label>
               <Input type="date" min={dataZaladunku || todayStr} value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
-                     className={cn(submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive field-invalid-pulse")} />
+                     className={cn("h-10 min-w-0 text-sm", submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive", shouldPulse("data_dostawy", submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku))) && "field-invalid-pulse")} />
               {submitTried && !dataDostawy && <FieldErr msg="Data dostawy wymagana" />}
               {submitTried && dataDostawy && dataZaladunku && dataDostawy <= dataZaladunku && (
                 <FieldErr msg="Data dostawy musi być późniejsza niż data załadunku" />
@@ -1045,7 +1043,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
               <Input value={managers[0].label} readOnly className="bg-muted/40" />
             ) : (
               <Select value={managerId} onValueChange={setManagerId} disabled={isImportMgr && !isSuper}>
-                <SelectTrigger className={cn(submitTried && !managerId && "border-destructive field-invalid-pulse")}>
+                <SelectTrigger className={cn(submitTried && !managerId && "border-destructive", shouldPulse("manager", submitTried && !managerId) && "field-invalid-pulse")}>
                   <SelectValue placeholder="Wybierz" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1059,7 +1057,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           <div>
             <Label>Komentarz</Label>
             <Input value={notes} maxLength={100} onChange={(e) => setNotes(e.target.value)}
-              className={cn(submitTried && (notes ?? "").length > 100 && "border-destructive field-invalid-pulse")} />
+              className={cn(submitTried && (notes ?? "").length > 100 && "border-destructive", shouldPulse("notes", submitTried && (notes ?? "").length > 100) && "field-invalid-pulse")} />
             <p className="mt-1 text-xs text-muted-foreground">{(notes ?? "").length}/100</p>
             {submitTried && (notes ?? "").length > 100 && <FieldErr msg="Maksymalnie 100 znaków" />}
           </div>
