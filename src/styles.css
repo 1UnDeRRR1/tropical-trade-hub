@@ -164,3 +164,16 @@
 @media (prefers-reduced-motion: reduce) {
   .field-invalid-pulse, .form-shake { animation: none; }
 }
+
+/* iOS Safari: prevent native date input from blowing out grid columns */
+input[type="date"] {
+  min-width: 0;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  font-variant-numeric: tabular-nums;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-width: 0;
+}
