@@ -1255,7 +1255,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Ilość opakowań *</Label>
                       <Input type="text" inputMode="numeric" pattern="\d*" value={p.ilosc_opakowan}
                         onChange={(e) => onIloscOpakowanChange(i, e.target.value)}
-                        className={cn(showErrs && errs.ilosc_opakowan && "border-destructive", shouldPulse(`row_${i}_ilosc_opakowan`, showErrs && !!errs.ilosc_opakowan) && "field-invalid-pulse")} />
+                        className={cn(errs.ilosc_opakowan && "border-destructive", shouldPulse(`row_${i}_ilosc_opakowan`, !!errs.ilosc_opakowan) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.ilosc_opakowan} />}
                     </div>
                   </div>
