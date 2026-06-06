@@ -653,6 +653,13 @@ function Page() {
   // Derived: per-line errors, totals, capacity
   // -----------------------------------------------------------------
   const lineErrors: FieldErrors[] = useMemo(() => pozycje.map(validatePosition), [pozycje]);
+  const lineWarnings: string[][] = useMemo(
+    () =>
+      pozycje.map((p) =>
+        calculatePositionLine(p, "notes", findStandard(p.produkt_id, p.opakowanie_id, p.kraj_id)).warnings,
+      ),
+    [pozycje, standardy, kraje],
+  );
 
   const totals = useMemo(() => {
     const palety = pozycje.reduce((s, p) => s + (Number(p.palety) || 0), 0);
@@ -894,7 +901,7 @@ function Page() {
           <CardContent className="space-y-4">
             {pozycje.map((p, i) => {
               const errs = lineErrors[i];
-              const showErrs = submitTried;
+              const showErrs = true;
               const odmianyForProdukt = p.produkt_id
                 ? odmiany.filter((o) => o.produkt_id === p.produkt_id)
                 : [];
@@ -905,10 +912,8 @@ function Page() {
                     ...opakowania.filter((o) => !suggested.has(o.id)),
                   ]
                 : opakowania;
-              const opakSelectedLabel =
-                p.opakowanie_source === "catalog" && p.opakowanie_id
-                  ? opakowania.find((o) => o.id === p.opakowanie_id)?.label ?? ""
-                  : p.opakowanie_query;
+              const opakSelectedLabel = p.opakowanie_query;
+              const warnings = lineWarnings[i] ?? [];
               const produktLabel =
                 p.produkt_query || (p.produkt_id ? produkty.find((x) => x.id === p.produkt_id)?.label ?? "" : "");
               const krajLabel =
