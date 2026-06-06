@@ -1095,10 +1095,12 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
 
 
       {/* Compact sticky capacity bar — one row, no large card/title.
+          AppShell header is sticky h-14 z-30 → offset top-14 so this bar
+          sticks directly below header on mobile + desktop.
           Dropdowns use z-50 and stay above this z-20 bar. */}
       <div className={cn(
-        "sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80",
-        capacityErrors.length > 0 && "ring-1 ring-destructive rounded-md",
+        "sticky top-14 z-20 -mx-4 px-4 py-1.5 md:-mx-6 md:px-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b",
+        capacityErrors.length > 0 && "ring-1 ring-destructive",
       )}>
         <div className="flex flex-wrap gap-1.5 text-xs sm:text-sm">
           <div className={cn(
