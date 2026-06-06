@@ -136,11 +136,14 @@ function Page() {
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-2xl font-bold">Dostawy</h1>
-          <Button asChild>
-            <Link to="/dostawy/nowa">
-              <Plus className="h-4 w-4" /> Utwórz dostawę
-            </Link>
-          </Button>
+          {canCreate && (
+            <Button asChild>
+              <Link to="/dostawy/nowa">
+                <Plus className="h-4 w-4" /> Utwórz dostawę
+              </Link>
+            </Button>
+          )}
+
         </div>
 
         {error && (
