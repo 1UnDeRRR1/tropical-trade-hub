@@ -33,7 +33,10 @@ interface Pozycja {
   position_id: string;
   produkt_id: string;
   odmiana_id: string | null;
-  opakowanie_id: string;
+  opakowanie_id: string | null;
+  opakowanie_source: "catalog" | "custom";
+  opakowanie_custom_text: string | null;
+  material_tary: "karton" | "drewno" | "plastik";
   kraj_id: string | null;
   palety: number;
   ilosc_opakowan: number | null;
@@ -42,6 +45,19 @@ interface Pozycja {
   cena_zakupu: number;
   waluta: string;
   notes: string | null;
+}
+
+function materialLabel(m: string): string {
+  if (m === "karton") return "Karton";
+  if (m === "drewno") return "Drewno";
+  if (m === "plastik") return "Plastik";
+  return m;
+}
+
+function opakLabel(p: Pozycja, catalogMap: Map<string, string>): string {
+  if (p.opakowanie_source === "custom") return p.opakowanie_custom_text || "—";
+  if (p.opakowanie_id) return catalogMap.get(p.opakowanie_id) ?? p.opakowanie_id;
+  return "—";
 }
 
 interface PozycjaStatus {
