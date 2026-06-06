@@ -826,7 +826,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
       <Card>
         <CardHeader><CardTitle>Dane dostawy</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="md:col-span-2">
+          <div>
             <Label>Dostawca *</Label>
             <Combobox
               items={dostawcy}
