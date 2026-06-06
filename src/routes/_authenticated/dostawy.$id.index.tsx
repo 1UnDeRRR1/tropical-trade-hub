@@ -404,7 +404,7 @@ function Page() {
   );
 }
 
-export const Route = createFileRoute("/_authenticated/dostawy/$id")({
+export const Route = createFileRoute("/_authenticated/dostawy/$id/")({
   head: () => ({ meta: [{ title: "Dostawa — Tropical Trade Platform" }] }),
   component: Page,
 });
