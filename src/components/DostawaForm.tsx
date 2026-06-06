@@ -697,10 +697,15 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           {mode === "edit" ? `Edycja dostawy` : "Nowa dostawa"}
         </h1>
         {mode === "edit" && existing && (
-          <p className="text-xs text-muted-foreground">
-            Wewnętrzny numer systemowy: <span className="font-mono">{existing.numer_dostawy}</span>
-            {" "}— nie jest to finalny numer biznesowy.
-          </p>
+          /^[A-Z0-9]+\/[0-9]{3}\/[A-Z]{3}\/[0-9]{3}$/.test(existing.numer_dostawy) ? (
+            <p className="text-xs text-muted-foreground">
+              Numer dostawy: <span className="font-mono">{existing.numer_dostawy}</span>
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Wewnętrzny numer systemowy / legacy: <span className="font-mono">{existing.numer_dostawy}</span>
+            </p>
+          )
         )}
         <p className="text-sm text-muted-foreground">
           Każda pozycja otrzymuje własny, unikalny identyfikator wewnętrzny.
