@@ -283,9 +283,11 @@ interface ComboProps {
   query: string;
   onQuery: (s: string) => void;
   onPick: (id: string, label: string) => void;
+  onBlurInput?: () => void;
   placeholder?: string;
   minChars?: number;
   extraTop?: React.ReactNode;
+  showInitialItems?: boolean;
   maxItems?: number;
   filterFn?: (item: RefItem, query: string) => boolean;
   invalid?: boolean;
@@ -297,9 +299,11 @@ function Combobox({
   query,
   onQuery,
   onPick,
+  onBlurInput,
   placeholder,
   minChars = 2,
   extraTop,
+  showInitialItems = false,
   maxItems = 50,
   filterFn,
   invalid,
@@ -316,10 +320,10 @@ function Combobox({
   }, []);
 
   const filtered = useMemo(() => {
-    if (query.trim().length < minChars) return [];
+    if (query.trim().length < minChars) return showInitialItems ? items.slice(0, maxItems) : [];
     const fn = filterFn ?? ((it: RefItem, q: string) => startsWithWord(it.search ?? it.label, q));
     return items.filter((it) => fn(it, query)).slice(0, maxItems);
-  }, [items, query, minChars, filterFn, maxItems]);
+  }, [items, query, minChars, showInitialItems, filterFn, maxItems]);
 
   return (
     <div className="relative" ref={wrapRef}>
@@ -333,6 +337,7 @@ function Combobox({
             onQuery(e.target.value);
             setOpen(true);
           }}
+          onBlur={onBlurInput}
         />
         {value && (
           <Button
@@ -352,7 +357,7 @@ function Combobox({
       {open && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-72 overflow-auto">
           {extraTop}
-          {query.trim().length < minChars ? (
+          {query.trim().length < minChars && !showInitialItems ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">
               Wpisz co najmniej {minChars} znaki…
             </div>
