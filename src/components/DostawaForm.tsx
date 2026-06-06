@@ -488,11 +488,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dostawcaId, dostawcy]);
 
-  const onKrajManualChange = (v: string) => {
-    setKrajManuallySet(true);
-    setKrajAutofilledFromSupplier(null);
-    setKrajId(v);
-  };
 
   const insertSupplierCountry = () => {
     const d = dostawcy.find((x) => x.id === dostawcaId);
