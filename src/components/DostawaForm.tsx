@@ -795,12 +795,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           <div>
             <Label>Data załadunku *</Label>
             <Input type="date" value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
-                   className={cn(submitTried && !dataZaladunku && "border-destructive")} />
+                   className={cn(submitTried && !dataZaladunku && "border-destructive field-invalid-pulse")} />
+            {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
           </div>
           <div>
             <Label>Data dostawy / przyjazdu *</Label>
             <Input type="date" value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
-                   className={cn(submitTried && !dataDostawy && "border-destructive")} />
+                   className={cn(submitTried && !dataDostawy && "border-destructive field-invalid-pulse")} />
+            {submitTried && !dataDostawy && <FieldErr msg="Data dostawy / przyjazdu wymagana" />}
           </div>
           <div>
             <Label>Dostawca *</Label>
