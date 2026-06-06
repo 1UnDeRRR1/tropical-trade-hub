@@ -950,7 +950,16 @@ function Page() {
                         items={produkty}
                         value={p.produkt_id}
                         query={produktLabel}
-                        onQuery={(s) => updateRow(i, { produkt_query: s, produkt_id: "", odmiana_id: "" })}
+                        onQuery={(s) =>
+                          updateRow(i, {
+                            produkt_query: s,
+                            produkt_id: "",
+                            odmiana_id: "",
+                            opakowanie_id: "",
+                            opakowanie_source: p.opakowanie_query.trim() ? "custom" : "none",
+                            weights_autofilled: false,
+                          })
+                        }
                         onPick={(id, label) => onPickProdukt(i, id, label)}
                         placeholder="Np. banan, ananas…"
                         invalid={showErrs && !!errs.produkt_id}
@@ -965,7 +974,7 @@ function Page() {
                         items={kraje}
                         value={p.kraj_id}
                         query={krajLabel}
-                        onQuery={(s) => updateRow(i, { kraj_query: s, kraj_id: "" })}
+                        onQuery={(s) => updateRow(i, { kraj_query: s, kraj_id: "", weights_autofilled: false })}
                         onPick={(id, label) => onPickKrajPoch(i, id, label)}
                         placeholder="Np. Hiszpania, Maroko…"
                         invalid={showErrs && !!errs.kraj_id}
@@ -1070,10 +1079,10 @@ function Page() {
                         min="0"
                         step="1"
                         value={p.ilosc_opakowan}
-                        onChange={(e) =>
-                          updateRow(i, { ilosc_opakowan: e.target.value, weights_autofilled: false })
-                        }
+                        onChange={(e) => onIloscOpakowanChange(i, e.target.value)}
+                        className={cn(showErrs && errs.ilosc_opakowan && "border-destructive")}
                       />
+                      {showErrs && <FieldErr msg={errs.ilosc_opakowan} />}
                     </div>
 
                     {/* 8. Netto */}
@@ -1085,7 +1094,7 @@ function Page() {
                         step="0.01"
                         value={p.netto_kg}
                         onChange={(e) =>
-                          updateRow(i, { netto_kg: e.target.value, weights_autofilled: false })
+                          applyChainedPatch(i, { netto_kg: e.target.value }, "netto_kg")
                         }
                         className={cn(showErrs && errs.netto_kg && "border-destructive")}
                       />
@@ -1101,11 +1110,11 @@ function Page() {
                         step="0.01"
                         value={p.brutto_kg}
                         onChange={(e) =>
-                          updateRow(i, { brutto_kg: e.target.value, weights_autofilled: false })
+                          applyChainedPatch(i, { brutto_kg: e.target.value }, "brutto_kg")
                         }
-                        className={cn(showErrs && errs.brutto_kg && "border-destructive")}
+                        className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive")}
                       />
-                      {showErrs && <FieldErr msg={errs.brutto_kg} />}
+                      {showErrs && <FieldErr msg={errs.brutto_kg ?? (totals.brutto > MAX_BRUTTO_KG ? "Przekroczono limit auta 21500 kg" : undefined)} />}
                     </div>
 
                     {/* 10. Cena zakupu */}
