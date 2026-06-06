@@ -593,7 +593,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
       if (exact) return exact;
       return generic ?? null;
     }
-    return generic ?? matches[0];
+    const firstHelperStandard = matches.at(0) ?? null;
+    return generic ?? firstHelperStandard;
   };
 
   // Initial Opakowanie suggestions: based on Produkt + row Kraj pochodzenia (NOT Kraj załadunku).
@@ -1028,7 +1029,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                   )}
                 </div>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label>Produkt *</Label>
                       <Combobox
@@ -1141,7 +1142,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     {showErrs && <FieldErr msg={errs.material_tary} />}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label>Palety *</Label>
                       <Input type="text" inputMode="numeric" pattern="\d*" value={p.palety}
@@ -1159,7 +1160,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label>Netto (kg) *</Label>
                       <Input type="text" inputMode="decimal" value={p.netto_kg}
@@ -1177,7 +1178,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label>Cena za 1 kg (€) *</Label>
                       <Input type="text" inputMode="decimal" value={p.cena_zakupu}
