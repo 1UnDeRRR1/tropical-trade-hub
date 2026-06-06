@@ -60,7 +60,7 @@ const EMPTY_POZ: PozycjaForm = {
   opakowanie_source: "none",
   opakowanie_id: "", opakowanie_query: "", opakowanie_custom_text: "",
   material_tary: "", material_autofilled: false,
-  palety: "0", ilosc_opakowan: "",
+  palety: "", ilosc_opakowan: "",
   netto_kg: "", brutto_kg: "", weights_autofilled: false,
   cena_zakupu: "", waluta: "EUR", notes: "",
 };
@@ -152,11 +152,23 @@ function calculatePositionLine(input: PozycjaForm, changedField: ChangedField, s
 }
 
 // ---------- Field validation ----------
+// Letters (incl. Polish), spaces, hyphen only — for combobox typed search text
+const LETTERS_RE = /^[A-Za-zÀ-ÖØ-öø-ÿĄąĆćĘęŁłŃńÓóŚśŹźŻż\s-]*$/;
+function lettersOnlyError(q: string): string | undefined {
+  return q && !LETTERS_RE.test(q) ? "Dozwolone są tylko litery" : undefined;
+}
+
 type FieldErrors = Partial<Record<keyof PozycjaForm | "opakowanie", string>>;
-function validatePosition(p: PozycjaForm, standard: StandardRow | null = null): FieldErrors {
+function validatePosition(p: PozycjaForm): FieldErrors {
   const e: FieldErrors = {};
-  if (!p.produkt_id) e.produkt_id = p.produkt_query.trim() ? "Wybierz produkt z listy" : "Produkt wymagany";
-  if (!p.kraj_id) e.kraj_id = p.kraj_query.trim() ? "Wybierz kraj z listy" : "Kraj pochodzenia wymagany";
+  if (!p.produkt_id) {
+    const le = lettersOnlyError(p.produkt_query);
+    e.produkt_id = le ?? (p.produkt_query.trim() ? "Wybierz produkt z listy" : "Produkt wymagany");
+  }
+  if (!p.kraj_id) {
+    const le = lettersOnlyError(p.kraj_query);
+    e.kraj_id = le ?? (p.kraj_query.trim() ? "Wybierz kraj z listy" : "Kraj pochodzenia wymagany");
+  }
   if (p.opakowanie_source === "custom") {
     const t = p.opakowanie_custom_text.trim();
     if (t.length > 200) e.opakowanie_custom_text = "Max 200 znaków";
@@ -167,37 +179,25 @@ function validatePosition(p: PozycjaForm, standard: StandardRow | null = null): 
   const netto = toNum(p.netto_kg);
   const brutto = toNum(p.brutto_kg);
   const cena = toNum(p.cena_zakupu);
-  if (isBlank(p.palety) || palety === null || palety < 0) e.palety = "Palety >= 0";
-  if (!isBlank(p.ilosc_opakowan) && (ilosc === null || ilosc < 0)) e.ilosc_opakowan = "Ilość opakowań >= 0";
+  if (isBlank(p.palety)) e.palety = "Liczba palet wymagana";
+  else if (palety === null) e.palety = "Dozwolone są tylko cyfry";
+  else if (palety <= 0) e.palety = "Liczba palet musi być większa niż 0";
+  if (isBlank(p.ilosc_opakowan)) e.ilosc_opakowan = "Ilość opakowań wymagana";
+  else if (ilosc === null) e.ilosc_opakowan = "Dozwolone są tylko cyfry";
+  else if (ilosc <= 0) e.ilosc_opakowan = "Ilość opakowań musi być większa niż 0";
   if (isBlank(p.netto_kg)) e.netto_kg = "Netto kg wymagane";
-  else if (netto === null || netto <= 0) e.netto_kg = "Netto kg musi być > 0";
+  else if (netto === null) e.netto_kg = "Dozwolone są tylko cyfry, przecinek lub kropka";
+  else if (netto <= 0) e.netto_kg = "Netto kg musi być większe niż 0";
   if (isBlank(p.brutto_kg)) e.brutto_kg = "Brutto kg wymagane";
-  else if (brutto === null || brutto <= 0) e.brutto_kg = "Brutto kg musi być > 0";
+  else if (brutto === null) e.brutto_kg = "Dozwolone są tylko cyfry, przecinek lub kropka";
+  else if (brutto <= 0) e.brutto_kg = "Brutto kg musi być większe niż 0";
   else if (netto !== null && brutto < netto) e.brutto_kg = "Brutto kg nie może być mniejsze niż netto kg";
-  if (isBlank(p.cena_zakupu)) e.cena_zakupu = "Cena zakupu wymagana";
-  else if (cena === null || cena < 0) e.cena_zakupu = "Cena zakupu >= 0";
+  if (isBlank(p.cena_zakupu)) e.cena_zakupu = "Cena zakupu za 1 kg wymagana";
+  else if (cena === null) e.cena_zakupu = "Dozwolone są tylko cyfry, przecinek lub kropka";
+  else if (cena <= 0) e.cena_zakupu = "Cena zakupu za 1 kg musi być większa niż 0";
   if (!["PLN","EUR","USD"].includes(p.waluta)) e.waluta = "PLN/EUR/USD";
-  if (p.opakowanie_source === "catalog" && standard) {
-    const bpp = standard.liczba_opakowan_na_palecie;
-    const npb = standard.waga_netto_opakowania_kg;
-    const gpb = standard.waga_brutto_opakowania_kg;
-    if (bpp !== null && npb !== null && gpb !== null && palety !== null) {
-      const expectedBoxes = palety * bpp;
-      const expectedNet = expectedBoxes * npb;
-      const expectedGross = expectedBoxes * gpb;
-      // Boxes: strict — only numeric float tolerance 0.01
-      if (ilosc === null || Math.abs(ilosc - expectedBoxes) > 0.01) {
-        e.ilosc_opakowan = `Wg standardu: ${fmtAmount(expectedBoxes, 0)} (palety × ${bpp})`;
-      }
-      // Netto / Brutto: rounding tolerance ±0.5 kg
-      if (netto !== null && Math.abs(netto - expectedNet) > 0.5) {
-        e.netto_kg = `Wg standardu: ${fmtAmount(expectedNet)} kg`;
-      }
-      if (brutto !== null && Math.abs(brutto - expectedGross) > 0.5) {
-        e.brutto_kg = `Wg standardu: ${fmtAmount(expectedGross)} kg`;
-      }
-    }
-  }
+  if ((p.notes ?? "").length > 100) e.notes = "Maksymalnie 100 znaków";
+  // standardy_palet are helper-only. Do NOT block save on mismatch.
   return e;
 }
 
@@ -374,6 +374,11 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const [saving, setSaving] = useState(false);
   const [submitTried, setSubmitTried] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [shakeKey, setShakeKey] = useState(0);
+  const triggerShake = () => {
+    setShakeKey((k) => k + 1);
+    try { if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.([60, 40, 60]); } catch { /* noop */ }
+  };
 
   // -----------------------------------------------------------------
   // Load reference data + aliases
@@ -653,8 +658,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
 
   // ---------- Errors, totals, capacity ----------
   const lineErrors: FieldErrors[] = useMemo(
-    () => pozycje.map((p) => validatePosition(p, findStandard(p.produkt_id, p.opakowanie_id, p.kraj_id))),
-    [pozycje, standardy, kraje],
+    () => pozycje.map((p) => validatePosition(p)),
+    [pozycje],
   );
   const lineWarnings: string[][] = useMemo(
     () => pozycje.map((p) => calculatePositionLine(p, "notes", findStandard(p.produkt_id, p.opakowanie_id, p.kraj_id)).warnings),
@@ -680,15 +685,18 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     return errs;
   }, [totals]);
 
+  const todayStr = new Date().toISOString().slice(0,10);
   const headerErrors: string[] = useMemo(() => {
     const errs: string[] = [];
+    if (!dostawcaId) errs.push(dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany");
+    if (!krajId) errs.push(krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany");
     if (!dataZaladunku) errs.push("Data załadunku wymagana");
+    else if (dataZaladunku < todayStr) errs.push("Data załadunku nie może być wcześniejsza niż dzisiaj");
     if (!dataDostawy) errs.push("Data dostawy / przyjazdu wymagana");
-    if (!dostawcaId) errs.push(dostawcaQuery.trim() ? "Dostawca — wybierz z listy" : "Dostawca wymagany");
-    if (!krajId) errs.push(krajZaladunkuQuery.trim() ? "Kraj załadunku — wybierz z listy" : "Kraj załadunku wymagany");
+    else if (dataZaladunku && dataDostawy <= dataZaladunku) errs.push("Data dostawy musi być późniejsza niż data załadunku");
     if (!managerId) errs.push("Manager importu wymagany");
     return errs;
-  }, [dataZaladunku, dataDostawy, dostawcaId, dostawcaQuery, krajId, krajZaladunkuQuery, managerId]);
+  }, [dataZaladunku, dataDostawy, dostawcaId, dostawcaQuery, krajId, krajZaladunkuQuery, managerId, todayStr]);
 
   const hasAnyError =
     headerErrors.length > 0 ||
@@ -702,6 +710,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     setStatus(s);
     if (hasAnyError) {
       setSubmitError("Formularz zawiera błędy. Popraw zaznaczone pola.");
+      triggerShake();
       return;
     }
     setSaving(true);
@@ -761,7 +770,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     : null;
 
   return (
-    <div className="space-y-4 max-w-5xl">
+    <div key={shakeKey} className={cn("space-y-4 max-w-5xl", shakeKey > 0 && "form-shake")}>
       <div>
         <h1 className="text-2xl font-bold">
           {mode === "edit" ? `Edycja dostawy` : "Nowa dostawa"}
@@ -793,18 +802,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         <CardHeader><CardTitle>Dane dostawy</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label>Data załadunku *</Label>
-            <Input type="date" value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
-                   className={cn(submitTried && !dataZaladunku && "border-destructive field-invalid-pulse")} />
-            {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
-          </div>
-          <div>
-            <Label>Data dostawy / przyjazdu *</Label>
-            <Input type="date" value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
-                   className={cn(submitTried && !dataDostawy && "border-destructive field-invalid-pulse")} />
-            {submitTried && !dataDostawy && <FieldErr msg="Data dostawy / przyjazdu wymagana" />}
-          </div>
-          <div>
             <Label>Dostawca *</Label>
             <Combobox
               items={dostawcy}
@@ -825,6 +822,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                   if (k) setKrajZaladunkuQuery(k.label);
                 }
               }}
+              onBlurInput={() => {
+                setTimeout(() => {
+                  if (!dostawcaId && dostawcaQuery.trim()) {
+                    setDostawcaQuery("");
+                    triggerShake();
+                  }
+                }, 220);
+              }}
               placeholder="Wpisz nazwę dostawcy"
               invalid={submitTried && !dostawcaId}
             />
@@ -835,6 +840,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
               <p className="mt-1 text-xs text-muted-foreground">Kraj dostawcy: {supplierKrajLabel}</p>
             )}
           </div>
+
           <div>
             <Label>Kraj załadunku *</Label>
             <Combobox
@@ -854,11 +860,22 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 setKrajManuallySet(true);
                 setKrajAutofilledFromSupplier(null);
               }}
+              onBlurInput={() => {
+                setTimeout(() => {
+                  if (!krajId && krajZaladunkuQuery.trim()) {
+                    setKrajZaladunkuQuery("");
+                    triggerShake();
+                  }
+                }, 220);
+              }}
               placeholder="Wpisz nazwę kraju"
               invalid={submitTried && !krajId}
             />
             {submitTried && !krajId && (
               <FieldErr msg={krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany"} />
+            )}
+            {lettersOnlyError(krajZaladunkuQuery) && !krajId && (
+              <FieldErr msg="Dozwolone są tylko litery" />
             )}
             {selectedDostawca?.kraj_id && krajId !== selectedDostawca.kraj_id && (
               <Button type="button" variant="link" size="sm" className="px-0 h-auto" onClick={() => {
@@ -870,6 +887,35 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
               </Button>
             )}
           </div>
+
+          <div>
+            <Label>Data załadunku *</Label>
+            <Input type="date" min={todayStr} value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
+                   className={cn(submitTried && (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive field-invalid-pulse")} />
+            {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
+            {submitTried && dataZaladunku && dataZaladunku < todayStr && (
+              <FieldErr msg="Data załadunku nie może być wcześniejsza niż dzisiaj" />
+            )}
+          </div>
+
+          <div>
+            <Label>Data dostawy / przyjazdu *</Label>
+            <Input type="date" min={dataZaladunku || todayStr} value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
+                   className={cn(submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive field-invalid-pulse")} />
+            {submitTried && !dataDostawy && <FieldErr msg="Data dostawy / przyjazdu wymagana" />}
+            {submitTried && dataDostawy && dataZaladunku && dataDostawy <= dataZaladunku && (
+              <FieldErr msg="Data dostawy musi być późniejsza niż data załadunku" />
+            )}
+          </div>
+
+          <div>
+            <Label>Szacunkowy koszt transportu za auto (€)</Label>
+            <Input type="number" disabled placeholder="—" />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Pole oczekuje na wdrożenie zaplecza (DB/RPC). Tymczasowo niedostępne.
+            </p>
+          </div>
+
           <div>
             <Label>Manager importu *</Label>
             <Select value={managerId} onValueChange={setManagerId} disabled={isImportMgr && !isSuper}>
@@ -882,12 +928,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             </Select>
             {submitTried && !managerId && <FieldErr msg="Manager importu wymagany" />}
           </div>
+
           <div className="md:col-span-2">
-            <Label>Notatki</Label>
+            <Label>Notatki dostawy</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
         </CardContent>
       </Card>
+
 
       <Card className={cn("sticky top-2 z-20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80", capacityErrors.length > 0 && "border-destructive")}>
         <CardHeader><CardTitle>Wykorzystanie auta</CardTitle></CardHeader>
@@ -966,6 +1014,15 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         weights_autofilled: false,
                       })}
                       onPick={(id, label) => onPickProdukt(i, id, label)}
+                      onBlurInput={() => {
+                        setTimeout(() => {
+                          const cur = pozycje[i];
+                          if (cur && !cur.produkt_id && cur.produkt_query.trim()) {
+                            updateRow(i, { produkt_query: "" });
+                            triggerShake();
+                          }
+                        }, 220);
+                      }}
                       placeholder="Np. cebula, onion, ananas…"
                       invalid={showErrs && !!errs.produkt_id}
                     />
@@ -981,14 +1038,90 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       filterFn={krajFilter}
                       onQuery={(s) => updateRow(i, { kraj_query: s, kraj_id: "", weights_autofilled: false })}
                       onPick={(id, label) => onPickKrajPoch(i, id, label)}
+                      onBlurInput={() => {
+                        setTimeout(() => {
+                          const cur = pozycje[i];
+                          if (cur && !cur.kraj_id && cur.kraj_query.trim()) {
+                            updateRow(i, { kraj_query: "" });
+                            triggerShake();
+                          }
+                        }, 220);
+                      }}
                       placeholder="Np. Hiszpania, Spain, Maroko…"
                       invalid={showErrs && !!errs.kraj_id}
                     />
                     {showErrs && <FieldErr msg={errs.kraj_id} />}
                   </div>
 
+                  <div className="md:col-span-2">
+                    <Label>Materiał tary *</Label>
+                    <div className="flex gap-2 mt-1">
+                      {(["karton","drewno","plastik"] as const).map((m) => (
+                        <Button key={m} type="button" size="sm"
+                          variant={p.material_tary === m ? "default" : "outline"}
+                          onClick={() => onMaterialChange(i, m)}
+                          className={cn(showErrs && errs.material_tary && !p.material_tary && "border-destructive field-invalid-pulse")}>
+                          {m === "karton" ? "Karton" : m === "drewno" ? "Drewno" : "Plastik"}
+                        </Button>
+                      ))}
+                    </div>
+                    {showErrs && <FieldErr msg={errs.material_tary} />}
+                  </div>
+
                   <div>
-                    <Label>Odmiana</Label>
+                    <Label>Ilość opakowań *</Label>
+                    <Input type="number" min="1" step="1" value={p.ilosc_opakowan}
+                      onChange={(e) => onIloscOpakowanChange(i, e.target.value)}
+                      className={cn(showErrs && errs.ilosc_opakowan && "border-destructive field-invalid-pulse")} />
+                    {showErrs && <FieldErr msg={errs.ilosc_opakowan} />}
+                  </div>
+
+                  <div>
+                    <Label>Palety *</Label>
+                    <Input type="number" min="1" step="1" value={p.palety}
+                      onChange={(e) => onPaletyChange(i, e.target.value)}
+                      className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive field-invalid-pulse")} />
+                    {showErrs && <FieldErr msg={errs.palety ?? (totals.palety > MAX_PALETY ? "Przekroczono limit auta 26 palet" : undefined)} />}
+                  </div>
+
+                  <div>
+                    <Label>Netto (kg) *</Label>
+                    <Input type="number" min="0" step="0.01" value={p.netto_kg}
+                      onChange={(e) => applyChainedPatch(i, { netto_kg: e.target.value }, "netto_kg")}
+                      className={cn(showErrs && errs.netto_kg && "border-destructive field-invalid-pulse")} />
+                    {showErrs && <FieldErr msg={errs.netto_kg} />}
+                  </div>
+
+                  <div>
+                    <Label>Brutto (kg) *</Label>
+                    <Input type="number" min="0" step="0.01" value={p.brutto_kg}
+                      onChange={(e) => applyChainedPatch(i, { brutto_kg: e.target.value }, "brutto_kg")}
+                      className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive field-invalid-pulse")} />
+                    {showErrs && <FieldErr msg={errs.brutto_kg ?? (totals.brutto > MAX_BRUTTO_KG ? "Przekroczono limit auta 21500 kg" : undefined)} />}
+                  </div>
+
+                  <div>
+                    <Label>Cena zakupu za 1 kg *</Label>
+                    <Input type="number" min="0" step="0.01" value={p.cena_zakupu}
+                      onChange={(e) => updateRow(i, { cena_zakupu: e.target.value })}
+                      className={cn(showErrs && errs.cena_zakupu && "border-destructive field-invalid-pulse")} />
+                    {showErrs && <FieldErr msg={errs.cena_zakupu} />}
+                  </div>
+
+                  <div>
+                    <Label>Waluta *</Label>
+                    <Select value={p.waluta} onValueChange={(v) => updateRow(i, { waluta: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PLN">PLN</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Odmiana / Sort</Label>
                     {!p.produkt_id ? (
                       <p className="text-xs text-muted-foreground py-2">Najpierw wybierz produkt.</p>
                     ) : odmianyForProdukt.length === 0 ? (
@@ -1001,6 +1134,24 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         </SelectContent>
                       </Select>
                     )}
+                  </div>
+
+                  <div>
+                    <Label>Marka / Brand</Label>
+                    <Input disabled placeholder="—" />
+                    <p className="mt-1 text-xs text-muted-foreground">Pole wymaga rozszerzenia DB/RPC.</p>
+                  </div>
+
+                  <div>
+                    <Label>Kaliber</Label>
+                    <Input disabled placeholder="—" />
+                    <p className="mt-1 text-xs text-muted-foreground">Pole wymaga rozszerzenia DB/RPC.</p>
+                  </div>
+
+                  <div>
+                    <Label>Klasa</Label>
+                    <Input disabled placeholder="—" />
+                    <p className="mt-1 text-xs text-muted-foreground">Pole wymaga rozszerzenia DB/RPC.</p>
                   </div>
 
                   <div className="md:col-span-2">
@@ -1026,81 +1177,41 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       invalid={showErrs && !!errs.opakowanie_custom_text}
                     />
                     {warnings.length > 0 && (
-                      <p className="mt-1 text-xs text-muted-foreground">{warnings[0]}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{warnings[0]} (pole pomocnicze, nie blokuje zapisu)</p>
                     )}
                     {showErrs && <FieldErr msg={errs.opakowanie ?? errs.opakowanie_custom_text} />}
                   </div>
 
-                  <div className="md:col-span-2">
-                    <Label>Materiał tary *</Label>
-                    <div className="flex gap-2 mt-1">
-                      {(["karton","drewno","plastik"] as const).map((m) => (
-                        <Button key={m} type="button" size="sm"
-                          variant={p.material_tary === m ? "default" : "outline"}
-                          onClick={() => onMaterialChange(i, m)}
-                          className={cn(showErrs && errs.material_tary && !p.material_tary && "border-destructive")}>
-                          {m === "karton" ? "Karton" : m === "drewno" ? "Drewno" : "Plastik"}
-                        </Button>
-                      ))}
-                    </div>
-                    {showErrs && <FieldErr msg={errs.material_tary} />}
-                  </div>
-
-                  <div>
-                    <Label>Palety</Label>
-                    <Input type="number" min="0" step="1" value={p.palety}
-                      onChange={(e) => onPaletyChange(i, e.target.value)}
-                      className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive")} />
-                    {showErrs && <FieldErr msg={errs.palety ?? (totals.palety > MAX_PALETY ? "Przekroczono limit auta 26 palet" : undefined)} />}
-                  </div>
-
-                  <div>
-                    <Label>Ilość opakowań</Label>
-                    <Input type="number" min="0" step="1" value={p.ilosc_opakowan}
-                      onChange={(e) => onIloscOpakowanChange(i, e.target.value)}
-                      className={cn(showErrs && errs.ilosc_opakowan && "border-destructive")} />
-                    {showErrs && <FieldErr msg={errs.ilosc_opakowan} />}
-                  </div>
-
-                  <div>
-                    <Label>Netto (kg) *</Label>
-                    <Input type="number" min="0" step="0.01" value={p.netto_kg}
-                      onChange={(e) => applyChainedPatch(i, { netto_kg: e.target.value }, "netto_kg")}
-                      className={cn(showErrs && errs.netto_kg && "border-destructive")} />
-                    {showErrs && <FieldErr msg={errs.netto_kg} />}
-                  </div>
-
-                  <div>
-                    <Label>Brutto (kg) *</Label>
-                    <Input type="number" min="0" step="0.01" value={p.brutto_kg}
-                      onChange={(e) => applyChainedPatch(i, { brutto_kg: e.target.value }, "brutto_kg")}
-                      className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive")} />
-                    {showErrs && <FieldErr msg={errs.brutto_kg ?? (totals.brutto > MAX_BRUTTO_KG ? "Przekroczono limit auta 21500 kg" : undefined)} />}
-                  </div>
-
-                  <div>
-                    <Label>Cena zakupu *</Label>
-                    <Input type="number" min="0" step="0.01" value={p.cena_zakupu}
-                      onChange={(e) => updateRow(i, { cena_zakupu: e.target.value })}
-                      className={cn(showErrs && errs.cena_zakupu && "border-destructive")} />
-                    {showErrs && <FieldErr msg={errs.cena_zakupu} />}
-                  </div>
-
-                  <div>
-                    <Label>Waluta *</Label>
-                    <Select value={p.waluta} onValueChange={(v) => updateRow(i, { waluta: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="PLN">PLN</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="USD">USD</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {(() => {
+                    const netto = toNum(p.netto_kg);
+                    const cena = toNum(p.cena_zakupu);
+                    const ilosc = toNum(p.ilosc_opakowan);
+                    const wartosc = netto !== null && cena !== null ? netto * cena : null;
+                    const cenaZaOpak = netto !== null && cena !== null && ilosc !== null && ilosc > 0
+                      ? (netto / ilosc) * cena : null;
+                    return (
+                      <>
+                        <div>
+                          <Label>Cena za opakowanie ({p.waluta})</Label>
+                          <Input disabled value={cenaZaOpak === null ? "" : cenaZaOpak.toFixed(2)} placeholder="—" />
+                          <p className="mt-1 text-xs text-muted-foreground">Podgląd automatyczny.</p>
+                        </div>
+                        <div>
+                          <Label>Wartość pozycji ({p.waluta})</Label>
+                          <Input disabled value={wartosc === null ? "" : wartosc.toFixed(2)} placeholder="—" />
+                          <p className="mt-1 text-xs text-muted-foreground">Podgląd automatyczny.</p>
+                        </div>
+                      </>
+                    );
+                  })()}
 
                   <div className="md:col-span-2">
-                    <Label>Notatki</Label>
-                    <Input value={p.notes} onChange={(e) => updateRow(i, { notes: e.target.value })} />
+                    <Label>Komentarz</Label>
+                    <Input value={p.notes} maxLength={100}
+                      onChange={(e) => updateRow(i, { notes: e.target.value })}
+                      className={cn(showErrs && errs.notes && "border-destructive field-invalid-pulse")} />
+                    <p className="mt-1 text-xs text-muted-foreground">{(p.notes ?? "").length}/100</p>
+                    {showErrs && <FieldErr msg={errs.notes} />}
                   </div>
                 </div>
               </div>
