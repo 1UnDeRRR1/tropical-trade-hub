@@ -155,8 +155,8 @@ function calculatePositionLine(input: PozycjaForm, changedField: ChangedField, s
 type FieldErrors = Partial<Record<keyof PozycjaForm | "opakowanie", string>>;
 function validatePosition(p: PozycjaForm, standard: StandardRow | null = null): FieldErrors {
   const e: FieldErrors = {};
-  if (!p.produkt_id) e.produkt_id = "Produkt wymagany (wybierz z listy)";
-  if (!p.kraj_id) e.kraj_id = "Kraj pochodzenia wymagany (wybierz z listy)";
+  if (!p.produkt_id) e.produkt_id = p.produkt_query.trim() ? "Wybierz produkt z listy" : "Produkt wymagany";
+  if (!p.kraj_id) e.kraj_id = p.kraj_query.trim() ? "Wybierz kraj z listy" : "Kraj pochodzenia wymagany";
   if (p.opakowanie_source === "custom") {
     const t = p.opakowanie_custom_text.trim();
     if (t.length > 200) e.opakowanie_custom_text = "Max 200 znaków";
@@ -218,7 +218,8 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
     <div className="relative" ref={wrapRef}>
       <div className="flex gap-1">
         <Input value={query} placeholder={placeholder}
-          className={cn(invalid && "border-destructive focus-visible:ring-destructive")}
+          className={cn(invalid && "border-destructive focus-visible:ring-destructive field-invalid-pulse")}
+          aria-invalid={invalid || undefined}
           onFocus={() => setOpen(true)}
           onChange={(e) => { onQuery(e.target.value); setOpen(true); }}
           onBlur={onBlurInput} />
@@ -232,7 +233,7 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-72 overflow-auto">
           {extraTop}
           {query.trim().length < minChars && !showInitialItems ? (
-            <div className="px-3 py-2 text-xs text-muted-foreground">Wpisz co najmniej {minChars} znaki…</div>
+            <div className="px-3 py-2 text-xs text-muted-foreground">Zacznij wpisywać…</div>
           ) : filtered.length === 0 ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">Brak wyników</div>
           ) : (
@@ -305,15 +306,18 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const [opakowania, setOpakowania] = useState<OpakItem[]>([]);
   const [managers, setManagers] = useState<RefItem[]>([]);
   const [standardy, setStandardy] = useState<StandardRow[]>([]);
-  // alias index: normalized alias -> Set of produkt_id / kraj_id
+  // alias index: normalized alias -> Set of produkt_id / kraj_id / dostawca_id
   const [produktAliases, setProduktAliases] = useState<Map<string, Set<string>>>(new Map());
   const [krajAliases, setKrajAliases] = useState<Map<string, Set<string>>>(new Map());
+  const [dostawcaAliases, setDostawcaAliases] = useState<Map<string, Set<string>>>(new Map());
 
   const today = new Date().toISOString().slice(0,10);
   const [dataZaladunku, setDataZaladunku] = useState(existing?.data_zaladunku ?? today);
   const [dataDostawy, setDataDostawy] = useState(existing?.data_dostawy ?? today);
   const [dostawcaId, setDostawcaId] = useState(existing?.dostawca_id ?? "");
+  const [dostawcaQuery, setDostawcaQuery] = useState("");
   const [krajId, setKrajId] = useState(existing?.kraj_id ?? "");
+  const [krajZaladunkuQuery, setKrajZaladunkuQuery] = useState("");
   const [krajManuallySet, setKrajManuallySet] = useState(mode === "edit");
   const [krajAutofilledFromSupplier, setKrajAutofilledFromSupplier] = useState<string | null>(null);
   const [managerId, setManagerId] = useState(existing?.import_manager_id ?? "");
@@ -352,7 +356,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   // -----------------------------------------------------------------
   useEffect(() => {
     (async () => {
-      const [d, k, p, o, op, st, u, ap, ak] = await Promise.all([
+      const [d, k, p, o, op, st, u, ap, ak, ad] = await Promise.all([
         supabase.from("dostawcy").select("dostawca_id, nazwa_dostawcy_original, alias_dostawcy, kraj_id").order("nazwa_dostawcy_original"),
         supabase.from("kraje").select("kraj_id, nazwa_pl, iso3").order("nazwa_pl"),
         supabase.from("produkty").select("produkt_id, nazwa_pl, aliasy_pl").order("nazwa_pl"),
@@ -364,6 +368,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           : Promise.resolve({ data: [] as Array<{ uzytkownik_id: string; imie_nazwisko: string | null }> }),
         supabase.from("aliasy_produktow").select("alias, produkt_id").not("produkt_id","is",null),
         supabase.from("aliasy_krajow").select("alias, kraj_id").not("kraj_id","is",null),
+        supabase.from("aliasy_dostawcow").select("alias, dostawca_id").not("dostawca_id","is",null),
       ]);
       setDostawcy((d.data ?? []).map((x) => {
         const primary = x.nazwa_dostawcy_original || x.alias_dostawcy || x.dostawca_id;
@@ -415,6 +420,16 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         ka.get(key)!.add(row.kraj_id);
       }
       setKrajAliases(ka);
+
+      const da = new Map<string, Set<string>>();
+      for (const row of (ad.data ?? []) as Array<{ alias: string | null; dostawca_id: string | null }>) {
+        if (!row.alias || !row.dostawca_id) continue;
+        const key = normalize(row.alias);
+        if (!key) continue;
+        if (!da.has(key)) da.set(key, new Set());
+        da.get(key)!.add(row.dostawca_id);
+      }
+      setDostawcaAliases(da);
     })();
   }, [isSuper, isImportMgr, profile?.uzytkownik_id, profile?.imie_nazwisko]);
 
@@ -440,6 +455,19 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [produkty, kraje, opakowania]);
 
+  // Hydrate header combobox queries from loaded labels
+  useEffect(() => {
+    if (!dostawcaQuery && dostawcaId && dostawcy.length) {
+      const d = dostawcy.find((x) => x.id === dostawcaId);
+      if (d) setDostawcaQuery(d.label);
+    }
+    if (!krajZaladunkuQuery && krajId && kraje.length) {
+      const k = kraje.find((x) => x.id === krajId);
+      if (k) setKrajZaladunkuQuery(k.label);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dostawcy, kraje, dostawcaId, krajId]);
+
   useEffect(() => {
     if (mode === "create" && !managerId && isImportMgr && profile?.uzytkownik_id) {
       setManagerId(profile.uzytkownik_id);
@@ -460,11 +488,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dostawcaId, dostawcy]);
 
-  const onKrajManualChange = (v: string) => {
-    setKrajManuallySet(true);
-    setKrajAutofilledFromSupplier(null);
-    setKrajId(v);
-  };
 
   const insertSupplierCountry = () => {
     const d = dostawcy.find((x) => x.id === dostawcaId);
@@ -478,7 +501,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   // ---------- Alias-aware filters ----------
   const produktFilter = (item: RefItem, q: string): boolean => {
     if (startsWithWord(item.search ?? item.label, q)) return true;
-    // alias match: any alias starting with q whose product id == item.id
     const norm = normalize(q);
     if (norm.length < 2) return false;
     for (const [aliasKey, ids] of produktAliases) {
@@ -491,6 +513,15 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     const norm = normalize(q);
     if (norm.length < 2) return false;
     for (const [aliasKey, ids] of krajAliases) {
+      if (aliasKey.startsWith(norm) && ids.has(item.id)) return true;
+    }
+    return false;
+  };
+  const dostawcaFilter = (item: RefItem, q: string): boolean => {
+    if (startsWithWord(item.search ?? item.label, q)) return true;
+    const norm = normalize(q);
+    if (norm.length < 2) return false;
+    for (const [aliasKey, ids] of dostawcaAliases) {
       if (aliasKey.startsWith(norm) && ids.has(item.id)) return true;
     }
     return false;
@@ -615,10 +646,11 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     const errs: string[] = [];
     if (!dataZaladunku) errs.push("Data załadunku wymagana");
     if (!dataDostawy) errs.push("Data dostawy / przyjazdu wymagana");
-    if (!dostawcaId) errs.push("Dostawca wymagany");
+    if (!dostawcaId) errs.push(dostawcaQuery.trim() ? "Dostawca — wybierz z listy" : "Dostawca wymagany");
+    if (!krajId) errs.push(krajZaladunkuQuery.trim() ? "Kraj załadunku — wybierz z listy" : "Kraj załadunku wymagany");
     if (!managerId) errs.push("Manager importu wymagany");
     return errs;
-  }, [dataZaladunku, dataDostawy, dostawcaId, managerId]);
+  }, [dataZaladunku, dataDostawy, dostawcaId, dostawcaQuery, krajId, krajZaladunkuQuery, managerId]);
 
   const hasAnyError =
     headerErrors.length > 0 ||
@@ -737,28 +769,66 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           </div>
           <div>
             <Label>Dostawca *</Label>
-            <Select value={dostawcaId} onValueChange={setDostawcaId}>
-              <SelectTrigger className={cn(submitTried && !dostawcaId && "border-destructive")}>
-                <SelectValue placeholder="Wybierz dostawcę" />
-              </SelectTrigger>
-              <SelectContent>
-                {dostawcy.map((x) => <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Combobox
+              items={dostawcy}
+              value={dostawcaId}
+              query={dostawcaQuery}
+              filterFn={dostawcaFilter}
+              onQuery={(s) => { setDostawcaQuery(s); setDostawcaId(""); }}
+              onPick={(id, label) => {
+                setDostawcaId(id);
+                setDostawcaQuery(label);
+                if (!id) return;
+                const d = dostawcy.find((x) => x.id === id);
+                if (d?.kraj_id && (!krajManuallySet || !krajId || krajAutofilledFromSupplier === krajId)) {
+                  setKrajId(d.kraj_id);
+                  setKrajAutofilledFromSupplier(d.kraj_id);
+                  setKrajManuallySet(false);
+                  const k = kraje.find((x) => x.id === d.kraj_id);
+                  if (k) setKrajZaladunkuQuery(k.label);
+                }
+              }}
+              placeholder="Wpisz nazwę dostawcy"
+              invalid={submitTried && !dostawcaId}
+            />
+            {submitTried && !dostawcaId && (
+              <FieldErr msg={dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany"} />
+            )}
             {supplierKrajLabel && (
               <p className="mt-1 text-xs text-muted-foreground">Kraj dostawcy: {supplierKrajLabel}</p>
             )}
           </div>
           <div>
-            <Label>Kraj załadunku</Label>
-            <Select value={krajId} onValueChange={onKrajManualChange}>
-              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>
-                {kraje.map((x) => <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label>Kraj załadunku *</Label>
+            <Combobox
+              items={kraje}
+              value={krajId}
+              query={krajZaladunkuQuery}
+              filterFn={krajFilter}
+              onQuery={(s) => {
+                setKrajZaladunkuQuery(s);
+                setKrajId("");
+                setKrajManuallySet(true);
+                setKrajAutofilledFromSupplier(null);
+              }}
+              onPick={(id, label) => {
+                setKrajId(id);
+                setKrajZaladunkuQuery(label);
+                setKrajManuallySet(true);
+                setKrajAutofilledFromSupplier(null);
+              }}
+              placeholder="Wpisz nazwę kraju"
+              invalid={submitTried && !krajId}
+            />
+            {submitTried && !krajId && (
+              <FieldErr msg={krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany"} />
+            )}
             {selectedDostawca?.kraj_id && krajId !== selectedDostawca.kraj_id && (
-              <Button type="button" variant="link" size="sm" className="px-0 h-auto" onClick={insertSupplierCountry}>
+              <Button type="button" variant="link" size="sm" className="px-0 h-auto" onClick={() => {
+                insertSupplierCountry();
+                const k = kraje.find((x) => x.id === selectedDostawca.kraj_id);
+                if (k) setKrajZaladunkuQuery(k.label);
+              }}>
                 Wstaw kraj dostawcy ({supplierKrajLabel})
               </Button>
             )}
@@ -781,7 +851,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         </CardContent>
       </Card>
 
-      <Card className={cn(capacityErrors.length > 0 && "border-destructive")}>
+      <Card className={cn("sticky top-2 z-20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80", capacityErrors.length > 0 && "border-destructive")}>
         <CardHeader><CardTitle>Wykorzystanie auta</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div>
@@ -843,7 +913,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <Label>Produkt * (wpisz min. 2 znaki — działają aliasy)</Label>
+                    <Label>Produkt *</Label>
                     <Combobox
                       items={produkty}
                       value={p.produkt_id}
@@ -862,7 +932,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                   </div>
 
                   <div>
-                    <Label>Kraj pochodzenia (wpisz min. 2 znaki — działają aliasy)</Label>
+                    <Label>Kraj pochodzenia *</Label>
                     <Combobox
                       items={kraje}
                       value={p.kraj_id}
@@ -909,14 +979,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       showInitialItems={!!p.produkt_id}
                       invalid={showErrs && !!errs.opakowanie_custom_text}
                     />
-                    {p.produkt_id && suggested.size > 0 && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Najpierw widoczne są opakowania znane dla tego produktu ({suggested.size}).
-                      </p>
-                    )}
-                    {p.opakowanie_source === "custom" && p.opakowanie_custom_text && (
-                      <p className="mt-1 text-xs text-muted-foreground">Własne opakowanie — wagi wpisz ręcznie.</p>
-                    )}
                     {warnings.length > 0 && (
                       <p className="mt-1 text-xs text-muted-foreground">{warnings[0]}</p>
                     )}

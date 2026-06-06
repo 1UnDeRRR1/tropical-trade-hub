@@ -142,3 +142,11 @@
     color: var(--color-foreground);
   }
 }
+
+@keyframes field-invalid-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(from var(--destructive) l c h / 0); }
+  50% { box-shadow: 0 0 0 4px oklch(from var(--destructive) l c h / 0.35); }
+}
+.field-invalid-pulse {
+  animation: field-invalid-pulse 0.7s ease-in-out 1;
+}
