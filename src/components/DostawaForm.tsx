@@ -1064,73 +1064,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                   </div>
 
                   <div className="md:col-span-2">
-                    <Label>Materiał tary *</Label>
-                    <div className="flex gap-2 mt-1">
-                      {(["karton","drewno","plastik"] as const).map((m) => (
-                        <Button key={m} type="button" size="sm"
-                          variant={p.material_tary === m ? "default" : "outline"}
-                          onClick={() => onMaterialChange(i, m)}
-                          className={cn(showErrs && errs.material_tary && !p.material_tary && "border-destructive field-invalid-pulse")}>
-                          {m === "karton" ? "Karton" : m === "drewno" ? "Drewno" : "Plastik"}
-                        </Button>
-                      ))}
-                    </div>
-                    {showErrs && <FieldErr msg={errs.material_tary} />}
-                  </div>
-
-                  <div>
-                    <Label>Ilość opakowań *</Label>
-                    <Input type="number" min="1" step="1" value={p.ilosc_opakowan}
-                      onChange={(e) => onIloscOpakowanChange(i, e.target.value)}
-                      className={cn(showErrs && errs.ilosc_opakowan && "border-destructive field-invalid-pulse")} />
-                    {showErrs && <FieldErr msg={errs.ilosc_opakowan} />}
-                  </div>
-
-                  <div>
-                    <Label>Palety *</Label>
-                    <Input type="number" min="1" step="1" value={p.palety}
-                      onChange={(e) => onPaletyChange(i, e.target.value)}
-                      className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive field-invalid-pulse")} />
-                    {showErrs && <FieldErr msg={errs.palety ?? (totals.palety > MAX_PALETY ? "Przekroczono limit auta 26 palet" : undefined)} />}
-                  </div>
-
-                  <div>
-                    <Label>Netto (kg) *</Label>
-                    <Input type="number" min="0" step="0.01" value={p.netto_kg}
-                      onChange={(e) => applyChainedPatch(i, { netto_kg: e.target.value }, "netto_kg")}
-                      className={cn(showErrs && errs.netto_kg && "border-destructive field-invalid-pulse")} />
-                    {showErrs && <FieldErr msg={errs.netto_kg} />}
-                  </div>
-
-                  <div>
-                    <Label>Brutto (kg) *</Label>
-                    <Input type="number" min="0" step="0.01" value={p.brutto_kg}
-                      onChange={(e) => applyChainedPatch(i, { brutto_kg: e.target.value }, "brutto_kg")}
-                      className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive field-invalid-pulse")} />
-                    {showErrs && <FieldErr msg={errs.brutto_kg ?? (totals.brutto > MAX_BRUTTO_KG ? "Przekroczono limit auta 21500 kg" : undefined)} />}
-                  </div>
-
-                  <div>
-                    <Label>Cena zakupu za 1 kg *</Label>
-                    <Input type="number" min="0" step="0.01" value={p.cena_zakupu}
-                      onChange={(e) => updateRow(i, { cena_zakupu: e.target.value })}
-                      className={cn(showErrs && errs.cena_zakupu && "border-destructive field-invalid-pulse")} />
-                    {showErrs && <FieldErr msg={errs.cena_zakupu} />}
-                  </div>
-
-                  <div>
-                    <Label>Waluta *</Label>
-                    <Select value={p.waluta} onValueChange={(v) => updateRow(i, { waluta: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="PLN">PLN</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="USD">USD</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
                     <Label>Odmiana / Sort</Label>
                     {!p.produkt_id ? (
                       <p className="text-xs text-muted-foreground py-2">Najpierw wybierz produkt.</p>
@@ -1144,24 +1077,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         </SelectContent>
                       </Select>
                     )}
-                  </div>
-
-                  <div>
-                    <Label>Marka / Brand</Label>
-                    <Input disabled placeholder="—" />
-                    <p className="mt-1 text-xs text-muted-foreground">Pole wymaga rozszerzenia DB/RPC.</p>
-                  </div>
-
-                  <div>
-                    <Label>Kaliber</Label>
-                    <Input disabled placeholder="—" />
-                    <p className="mt-1 text-xs text-muted-foreground">Pole wymaga rozszerzenia DB/RPC.</p>
-                  </div>
-
-                  <div>
-                    <Label>Klasa</Label>
-                    <Input disabled placeholder="—" />
-                    <p className="mt-1 text-xs text-muted-foreground">Pole wymaga rozszerzenia DB/RPC.</p>
                   </div>
 
                   <div className="md:col-span-2">
@@ -1187,31 +1102,77 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       invalid={showErrs && !!errs.opakowanie_custom_text}
                     />
                     {warnings.length > 0 && (
-                      <p className="mt-1 text-xs text-muted-foreground">{warnings[0]} (pole pomocnicze, nie blokuje zapisu)</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{warnings[0]}</p>
                     )}
                     {showErrs && <FieldErr msg={errs.opakowanie ?? errs.opakowanie_custom_text} />}
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Label>Materiał tary *</Label>
+                    <div className="flex gap-2 mt-1">
+                      {(["karton","drewno","plastik"] as const).map((m) => (
+                        <Button key={m} type="button" size="sm"
+                          variant={p.material_tary === m ? "default" : "outline"}
+                          onClick={() => onMaterialChange(i, m)}
+                          className={cn(showErrs && errs.material_tary && !p.material_tary && "border-destructive field-invalid-pulse")}>
+                          {m === "karton" ? "Karton" : m === "drewno" ? "Drewno" : "Plastik"}
+                        </Button>
+                      ))}
+                    </div>
+                    {showErrs && <FieldErr msg={errs.material_tary} />}
+                  </div>
+
+                  <div>
+                    <Label>Palety *</Label>
+                    <Input type="text" inputMode="numeric" pattern="\d*" value={p.palety}
+                      onChange={(e) => onPaletyChange(i, e.target.value)}
+                      className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive field-invalid-pulse")} />
+                    {showErrs && <FieldErr msg={errs.palety ?? (totals.palety > MAX_PALETY ? "Przekroczono limit auta 26 palet" : undefined)} />}
+                  </div>
+
+                  <div>
+                    <Label>Ilość opakowań *</Label>
+                    <Input type="text" inputMode="numeric" pattern="\d*" value={p.ilosc_opakowan}
+                      onChange={(e) => onIloscOpakowanChange(i, e.target.value)}
+                      className={cn(showErrs && errs.ilosc_opakowan && "border-destructive field-invalid-pulse")} />
+                    {showErrs && <FieldErr msg={errs.ilosc_opakowan} />}
+                  </div>
+
+                  <div>
+                    <Label>Netto (kg) *</Label>
+                    <Input type="text" inputMode="decimal" value={p.netto_kg}
+                      onChange={(e) => applyChainedPatch(i, { netto_kg: e.target.value }, "netto_kg")}
+                      className={cn(showErrs && errs.netto_kg && "border-destructive field-invalid-pulse")} />
+                    {showErrs && <FieldErr msg={errs.netto_kg} />}
+                  </div>
+
+                  <div>
+                    <Label>Brutto (kg) *</Label>
+                    <Input type="text" inputMode="decimal" value={p.brutto_kg}
+                      onChange={(e) => applyChainedPatch(i, { brutto_kg: e.target.value }, "brutto_kg")}
+                      className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive field-invalid-pulse")} />
+                    {showErrs && <FieldErr msg={errs.brutto_kg ?? (totals.brutto > MAX_BRUTTO_KG ? "Przekroczono limit auta 21500 kg" : undefined)} />}
+                  </div>
+
+                  <div>
+                    <Label>Cena za 1 kg (€) *</Label>
+                    <Input type="text" inputMode="decimal" value={p.cena_zakupu}
+                      onChange={(e) => updateRow(i, { cena_zakupu: e.target.value })}
+                      className={cn(showErrs && errs.cena_zakupu && "border-destructive field-invalid-pulse")} />
+                    {showErrs && <FieldErr msg={errs.cena_zakupu} />}
                   </div>
 
                   {(() => {
                     const netto = toNum(p.netto_kg);
                     const cena = toNum(p.cena_zakupu);
                     const ilosc = toNum(p.ilosc_opakowan);
-                    const wartosc = netto !== null && cena !== null ? netto * cena : null;
                     const cenaZaOpak = netto !== null && cena !== null && ilosc !== null && ilosc > 0
                       ? (netto / ilosc) * cena : null;
                     return (
-                      <>
-                        <div>
-                          <Label>Cena za opakowanie ({p.waluta})</Label>
-                          <Input disabled value={cenaZaOpak === null ? "" : cenaZaOpak.toFixed(2)} placeholder="—" />
-                          <p className="mt-1 text-xs text-muted-foreground">Podgląd automatyczny.</p>
-                        </div>
-                        <div>
-                          <Label>Wartość pozycji ({p.waluta})</Label>
-                          <Input disabled value={wartosc === null ? "" : wartosc.toFixed(2)} placeholder="—" />
-                          <p className="mt-1 text-xs text-muted-foreground">Podgląd automatyczny.</p>
-                        </div>
-                      </>
+                      <div>
+                        <Label>Cena za opakowanie (€)</Label>
+                        <Input disabled value={cenaZaOpak === null ? "" : cenaZaOpak.toFixed(2)} placeholder="—" />
+                      </div>
                     );
                   })()}
 
@@ -1223,6 +1184,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     <p className="mt-1 text-xs text-muted-foreground">{(p.notes ?? "").length}/100</p>
                     {showErrs && <FieldErr msg={errs.notes} />}
                   </div>
+
                 </div>
               </div>
             );
