@@ -587,11 +587,13 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     const iso3 = kraje.find((k) => k.id === kraj_id)?.iso3 ?? null;
     const matches = standardy.filter((s) => s.produkt_id === produkt_id && s.opakowanie_id === opakowanie_id);
     if (matches.length === 0) return null;
+    const generic = matches.find((m) => !m.iso3_kraju || !m.iso3_kraju.trim());
     if (iso3) {
       const exact = matches.find((m) => (m.iso3_kraju ?? "").toUpperCase() === iso3.toUpperCase());
       if (exact) return exact;
+      return generic ?? null;
     }
-    return matches[0];
+    return generic ?? matches[0];
   };
 
   // Initial Opakowanie suggestions: based on Produkt + row Kraj pochodzenia (NOT Kraj załadunku).
