@@ -610,6 +610,10 @@ function Page() {
   };
 
   const onPickOpakowanie = (i: number, id: string, label: string) => {
+    if (!id) {
+      onOpakowanieQuery(i, "");
+      return;
+    }
     const cur = pozycje[i];
     const opak = opakowania.find((x) => x.id === id);
     const patch: Partial<PozycjaForm> = {
@@ -955,7 +959,9 @@ function Page() {
                         onQuery={(s) => updateRow(i, { kraj_query: s, kraj_id: "" })}
                         onPick={(id, label) => onPickKrajPoch(i, id, label)}
                         placeholder="Np. Hiszpania, Maroko…"
+                        invalid={showErrs && !!errs.kraj_id}
                       />
+                      {showErrs && <FieldErr msg={errs.kraj_id} />}
                     </div>
 
                     {/* 3. Odmiana */}
@@ -970,7 +976,7 @@ function Page() {
                           Brak odmian dla wybranego produktu
                         </p>
                       ) : (
-                        <Select value={p.odmiana_id} onValueChange={(v) => updateRow(i, { odmiana_id: v })}>
+                        <Select value={p.odmiana_id} onValueChange={(v) => applyChainedPatch(i, { odmiana_id: v }, "odmiana")}>
                           <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                           <SelectContent>
                             {odmianyForProdukt.map((x) => (
@@ -1006,6 +1012,9 @@ function Page() {
                       )}
                       {p.opakowanie_source === "custom" && p.opakowanie_custom_text && (
                         <p className="mt-1 text-xs text-muted-foreground">Własne opakowanie — wagi wpisz ręcznie.</p>
+                      )}
+                      {warnings.length > 0 && (
+                        <p className="mt-1 text-xs text-muted-foreground">{warnings[0]}</p>
                       )}
                       {showErrs && <FieldErr msg={errs.opakowanie ?? errs.opakowanie_custom_text} />}
                     </div>
