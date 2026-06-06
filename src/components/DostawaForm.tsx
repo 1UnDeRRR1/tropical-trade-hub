@@ -1265,7 +1265,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Netto (kg) *</Label>
                       <Input type="text" inputMode="decimal" value={p.netto_kg}
                         onChange={(e) => applyChainedPatch(i, { netto_kg: e.target.value }, "netto_kg")}
-                        className={cn(showErrs && errs.netto_kg && "border-destructive", shouldPulse(`row_${i}_netto_kg`, showErrs && !!errs.netto_kg) && "field-invalid-pulse")} />
+                        className={cn(errs.netto_kg && "border-destructive", shouldPulse(`row_${i}_netto_kg`, !!errs.netto_kg) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.netto_kg} />}
                     </div>
 
