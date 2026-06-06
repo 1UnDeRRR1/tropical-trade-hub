@@ -192,26 +192,26 @@ function validatePosition(p: PozycjaForm): FieldErrors {
   const brutto = toNum(p.brutto_kg);
   const cena = toNum(p.cena_zakupu);
   if (isBlank(p.palety)) e.palety = "Liczba palet wymagana";
-  else if (palety === null) e.palety = "Dozwolone są tylko cyfry";
-  else if (palety <= 0) e.palety = "Liczba palet musi być większa niż 0";
+  else if (!INT_RE.test(p.palety.trim())) e.palety = "Dozwolone są tylko cyfry";
+  else if (palety === null || palety <= 0) e.palety = "Liczba palet musi być większa niż 0";
   if (isBlank(p.ilosc_opakowan)) e.ilosc_opakowan = "Ilość opakowań wymagana";
-  else if (ilosc === null) e.ilosc_opakowan = "Dozwolone są tylko cyfry";
-  else if (ilosc <= 0) e.ilosc_opakowan = "Ilość opakowań musi być większa niż 0";
+  else if (!INT_RE.test(p.ilosc_opakowan.trim())) e.ilosc_opakowan = "Dozwolone są tylko cyfry";
+  else if (ilosc === null || ilosc <= 0) e.ilosc_opakowan = "Ilość opakowań musi być większa niż 0";
   if (isBlank(p.netto_kg)) e.netto_kg = "Netto kg wymagane";
-  else if (netto === null) e.netto_kg = "Dozwolone są tylko cyfry, przecinek lub kropka";
-  else if (netto <= 0) e.netto_kg = "Netto kg musi być większe niż 0";
+  else if (!DEC_RE.test(p.netto_kg.trim())) e.netto_kg = "Dozwolone są tylko cyfry, przecinek lub kropka";
+  else if (netto === null || netto <= 0) e.netto_kg = "Netto kg musi być większe niż 0";
   if (isBlank(p.brutto_kg)) e.brutto_kg = "Brutto kg wymagane";
-  else if (brutto === null) e.brutto_kg = "Dozwolone są tylko cyfry, przecinek lub kropka";
-  else if (brutto <= 0) e.brutto_kg = "Brutto kg musi być większe niż 0";
+  else if (!DEC_RE.test(p.brutto_kg.trim())) e.brutto_kg = "Dozwolone są tylko cyfry, przecinek lub kropka";
+  else if (brutto === null || brutto <= 0) e.brutto_kg = "Brutto kg musi być większe niż 0";
   else if (netto !== null && brutto < netto) e.brutto_kg = "Brutto kg nie może być mniejsze niż netto kg";
-  if (isBlank(p.cena_zakupu)) e.cena_zakupu = "Cena zakupu za 1 kg wymagana";
-  else if (cena === null) e.cena_zakupu = "Dozwolone są tylko cyfry, przecinek lub kropka";
-  else if (cena <= 0) e.cena_zakupu = "Cena zakupu za 1 kg musi być większa niż 0";
-  if (!["PLN","EUR","USD"].includes(p.waluta)) e.waluta = "PLN/EUR/USD";
+  if (isBlank(p.cena_zakupu)) e.cena_zakupu = "Cena za 1 kg wymagana";
+  else if (!DEC_RE.test(p.cena_zakupu.trim())) e.cena_zakupu = "Dozwolone są tylko cyfry, przecinek lub kropka";
+  else if (cena === null || cena <= 0) e.cena_zakupu = "Cena za 1 kg musi być większa niż 0";
   if ((p.notes ?? "").length > 100) e.notes = "Maksymalnie 100 znaków";
   // standardy_palet are helper-only. Do NOT block save on mismatch.
   return e;
 }
+
 
 // ---------- Combobox ----------
 interface ComboProps {
