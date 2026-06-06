@@ -227,7 +227,7 @@ interface ComboProps {
   emptyInitialMessage?: string;
 }
 function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placeholder, minChars = 2,
-                   extraTop, showInitialItems = false, maxItems = 50, filterFn, invalid,
+                   extraTop, showInitialItems = false, maxItems = 20, filterFn, invalid,
                    initialItems, emptyInitialMessage }: ComboProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
