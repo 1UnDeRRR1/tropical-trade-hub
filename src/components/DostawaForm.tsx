@@ -21,6 +21,18 @@ import {
 const MAX_PALETY = 26;
 const MAX_BRUTTO_KG = 21500;
 
+// Local (not UTC) YYYY-MM-DD for date validation
+function localTodayStr(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+const INT_RE = /^\d+$/;
+const DEC_RE = /^\d+([.,]\d+)?$/;
+
+
 // ---------- Types ----------
 interface RefItem { id: string; label: string; search?: string; }
 interface ProduktItem extends RefItem {}
