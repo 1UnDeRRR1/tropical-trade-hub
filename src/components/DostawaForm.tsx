@@ -576,17 +576,31 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     return matches[0];
   };
 
-  const suggestedOpakIds = (produkt_id: string, kraj_id: string): Set<string> => {
-    const s = new Set<string>();
-    if (!produkt_id) return s;
+  // Initial Opakowanie suggestions: based on Produkt + row Kraj pochodzenia (NOT Kraj załadunku).
+  // Exact ISO3 standards first, then generic (null iso3_kraju). Standards for other country-specific ISO3 excluded.
+  const suggestedOpakIdsOrdered = (produkt_id: string, kraj_id: string): { exact: string[]; generic: string[]; hasAnyStandard: boolean } => {
+    if (!produkt_id) return { exact: [], generic: [], hasAnyStandard: false };
     const iso3 = kraje.find((k) => k.id === kraj_id)?.iso3 ?? null;
+    const exact = new Set<string>();
+    const generic = new Set<string>();
+    let hasAnyStandard = false;
     for (const r of standardy) {
       if (r.produkt_id !== produkt_id) continue;
-      if (iso3 && r.iso3_kraju && r.iso3_kraju.toUpperCase() !== iso3.toUpperCase()) continue;
-      s.add(r.opakowanie_id);
+      hasAnyStandard = true;
+      const rIso = r.iso3_kraju ? r.iso3_kraju.toUpperCase() : null;
+      if (!iso3) {
+        // No country picked yet — show all standards for product
+        if (rIso) exact.add(r.opakowanie_id);
+        else generic.add(r.opakowanie_id);
+      } else {
+        if (rIso === iso3.toUpperCase()) exact.add(r.opakowanie_id);
+        else if (!rIso) generic.add(r.opakowanie_id);
+        // other country-specific standards excluded from initial list
+      }
     }
-    return s;
+    return { exact: [...exact], generic: [...generic].filter((id) => !exact.has(id)), hasAnyStandard };
   };
+
 
   const applyChainedPatch = (i: number, patch: Partial<PozycjaForm>, changedField: ChangedField) => {
     const merged: PozycjaForm = { ...pozycje[i], ...patch };
