@@ -437,7 +437,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         waga_netto_opakowania_kg: toNum(r.waga_netto_opakowania_kg as string),
         waga_brutto_opakowania_kg: toNum(r.waga_brutto_opakowania_kg as string),
       })));
-      if (isSuper) {
+      if (canLoadManagers) {
         setManagers((u.data ?? []).map((x) => ({ id: x.uzytkownik_id, label: x.imie_nazwisko || x.uzytkownik_id })));
       } else if (isImportMgr && profile?.uzytkownik_id) {
         setManagers([{ id: profile.uzytkownik_id, label: profile.imie_nazwisko || profile.uzytkownik_id }]);
