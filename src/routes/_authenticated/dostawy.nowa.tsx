@@ -95,7 +95,7 @@ const EMPTY_POZ: PozycjaForm = {
   kraj_id: "",
   kraj_query: "",
   odmiana_id: "",
-  opakowanie_source: "catalog",
+  opakowanie_source: "none",
   opakowanie_id: "",
   opakowanie_query: "",
   opakowanie_custom_text: "",
@@ -156,26 +156,89 @@ function isBlank(s: string): boolean {
 // ====================================================================
 // Calculation engine — one logical chain per position
 // ====================================================================
-interface CalcResult {
-  ilosc_opakowan: string;
-  netto_kg: string;
-  brutto_kg: string;
+type ChangedField =
+  | "produkt"
+  | "kraj"
+  | "odmiana"
+  | "opakowanie"
+  | "material_tary"
+  | "palety"
+  | "ilosc_opakowan"
+  | "netto_kg"
+  | "brutto_kg"
+  | "cena_zakupu"
+  | "waluta"
+  | "notes";
+
+interface PositionCalculation {
+  next: PozycjaForm;
+  standard: StandardRow | null;
+  warnings: string[];
 }
 
-/**
- * Recalculate downstream weights for a position when a catalog standard
- * is available and weights were auto-filled (not manually overridden).
- * Drives: palety -> total boxes -> netto, brutto.
- */
-function calcFromStandard(palety: number, std: StandardRow): CalcResult {
-  const ilosc = std.liczba_opakowan_na_palecie ? std.liczba_opakowan_na_palecie * palety : null;
-  const netto = std.waga_netto_opakowania_kg && ilosc !== null ? std.waga_netto_opakowania_kg * ilosc : null;
-  const brutto = std.waga_brutto_opakowania_kg && ilosc !== null ? std.waga_brutto_opakowania_kg * ilosc : null;
-  return {
-    ilosc_opakowan: ilosc !== null ? String(Math.round(ilosc)) : "",
-    netto_kg: netto !== null ? netto.toFixed(2) : "",
-    brutto_kg: brutto !== null ? brutto.toFixed(2) : "",
+function fmtAmount(n: number, fractionDigits = 2): string {
+  return Number.isInteger(n) && fractionDigits === 0 ? String(n) : n.toFixed(fractionDigits);
+}
+
+function differsFromExpected(actual: string, expected: number | null): boolean {
+  const a = toNum(actual);
+  if (a === null || expected === null) return false;
+  return Math.abs(a - expected) > 0.01;
+}
+
+function calculatePositionLine(
+  input: PozycjaForm,
+  changedField: ChangedField,
+  standard: StandardRow | null,
+): PositionCalculation {
+  const next: PozycjaForm = { ...input };
+  const warnings: string[] = [];
+
+  if (next.opakowanie_source !== "catalog" || !standard) {
+    if (changedField === "opakowanie" || changedField === "produkt" || changedField === "kraj") {
+      next.weights_autofilled = false;
+    }
+    return { next, standard: null, warnings };
+  }
+
+  const boxesPerPallet = standard.liczba_opakowan_na_palecie;
+  const netPerBox = standard.waga_netto_opakowania_kg;
+  const grossPerBox = standard.waga_brutto_opakowania_kg;
+  const palety = toNum(next.palety);
+  const boxes = toNum(next.ilosc_opakowan);
+
+  const recalcFromBoxes = (boxCount: number) => {
+    next.ilosc_opakowan = fmtAmount(boxCount, 0);
+    if (netPerBox !== null) next.netto_kg = fmtAmount(boxCount * netPerBox);
+    if (grossPerBox !== null) next.brutto_kg = fmtAmount(boxCount * grossPerBox);
+    next.weights_autofilled = true;
   };
+
+  if (changedField === "palety" || changedField === "opakowanie" || changedField === "produkt" || changedField === "kraj") {
+    if (palety !== null && boxesPerPallet !== null) {
+      recalcFromBoxes(Math.max(0, palety) * boxesPerPallet);
+    } else if (boxes !== null) {
+      recalcFromBoxes(Math.max(0, boxes));
+    }
+  } else if (changedField === "ilosc_opakowan" && boxes !== null) {
+    recalcFromBoxes(Math.max(0, boxes));
+  } else if (changedField === "netto_kg" || changedField === "brutto_kg") {
+    next.weights_autofilled = false;
+  }
+
+  const expectedBoxes = palety !== null && boxesPerPallet !== null ? Math.max(0, palety) * boxesPerPallet : null;
+  const expectedNet = expectedBoxes !== null && netPerBox !== null ? expectedBoxes * netPerBox : null;
+  const expectedGross = expectedBoxes !== null && grossPerBox !== null ? expectedBoxes * grossPerBox : null;
+  if (
+    !next.weights_autofilled &&
+    (differsFromExpected(next.ilosc_opakowan, expectedBoxes) ||
+      differsFromExpected(next.netto_kg, expectedNet) ||
+      differsFromExpected(next.brutto_kg, expectedGross))
+  ) {
+    warnings.push("Ręczna korekta wartości względem standardu palety");
+  }
+
+  return { next, standard, warnings };
 }
 
 // ====================================================================
@@ -183,26 +246,37 @@ function calcFromStandard(palety: number, std: StandardRow): CalcResult {
 // ====================================================================
 type FieldErrors = Partial<Record<keyof PozycjaForm | "opakowanie", string>>;
 
-function validatePosition(p: PozycjaForm): FieldErrors {
+function validatePosition(p: PozycjaForm, standard: StandardRow | null = null): FieldErrors {
   const e: FieldErrors = {};
   if (!p.produkt_id) e.produkt_id = "Produkt wymagany (wybierz z listy)";
-  if (p.opakowanie_source === "catalog" && !p.opakowanie_id) e.opakowanie = "Opakowanie z katalogu wymagane";
+  if (!p.kraj_id) e.kraj_id = "Kraj pochodzenia wymagany (wybierz z listy)";
   if (p.opakowanie_source === "custom") {
     const t = p.opakowanie_custom_text.trim();
-    if (!t) e.opakowanie_custom_text = "Wpisz własne opakowanie";
-    else if (t.length > 200) e.opakowanie_custom_text = "Max 200 znaków";
+    if (t.length > 200) e.opakowanie_custom_text = "Max 200 znaków";
   }
   if (!p.material_tary) e.material_tary = "Materiał tary wymagany";
-  if (isBlank(p.palety) || Number(p.palety) < 0) e.palety = "Palety >= 0";
+  const palety = toNum(p.palety);
+  const ilosc = toNum(p.ilosc_opakowan);
+  const netto = toNum(p.netto_kg);
+  const brutto = toNum(p.brutto_kg);
+  const cena = toNum(p.cena_zakupu);
+  if (isBlank(p.palety) || palety === null || palety < 0) e.palety = "Palety >= 0";
+  if (!isBlank(p.ilosc_opakowan) && (ilosc === null || ilosc < 0)) e.ilosc_opakowan = "Ilość opakowań >= 0";
   if (isBlank(p.netto_kg)) e.netto_kg = "Netto kg wymagane";
-  else if (Number(p.netto_kg) <= 0) e.netto_kg = "Netto kg musi być > 0";
+  else if (netto === null || netto <= 0) e.netto_kg = "Netto kg musi być > 0";
   if (isBlank(p.brutto_kg)) e.brutto_kg = "Brutto kg wymagane";
-  else if (Number(p.brutto_kg) <= 0) e.brutto_kg = "Brutto kg musi być > 0";
-  else if (!isBlank(p.netto_kg) && Number(p.brutto_kg) < Number(p.netto_kg))
+  else if (brutto === null || brutto <= 0) e.brutto_kg = "Brutto kg musi być > 0";
+  else if (netto !== null && brutto < netto)
     e.brutto_kg = "Brutto kg nie może być mniejsze niż netto kg";
   if (isBlank(p.cena_zakupu)) e.cena_zakupu = "Cena zakupu wymagana";
-  else if (Number(p.cena_zakupu) < 0) e.cena_zakupu = "Cena zakupu >= 0";
+  else if (cena === null || cena < 0) e.cena_zakupu = "Cena zakupu >= 0";
   if (!["PLN", "EUR", "USD"].includes(p.waluta)) e.waluta = "PLN/EUR/USD";
+  if (p.opakowanie_source === "catalog" && standard && standard.liczba_opakowan_na_palecie !== null) {
+    const expectedBoxes = palety !== null ? palety * standard.liczba_opakowan_na_palecie : null;
+    if (differsFromExpected(p.ilosc_opakowan, expectedBoxes)) {
+      e.ilosc_opakowan = `Standard wymaga ${fmtAmount(expectedBoxes ?? 0, 0)} opak. dla ${p.palety || 0} palet`;
+    }
+  }
   return e;
 }
 
@@ -215,9 +289,11 @@ interface ComboProps {
   query: string;
   onQuery: (s: string) => void;
   onPick: (id: string, label: string) => void;
+  onBlurInput?: () => void;
   placeholder?: string;
   minChars?: number;
   extraTop?: React.ReactNode;
+  showInitialItems?: boolean;
   maxItems?: number;
   filterFn?: (item: RefItem, query: string) => boolean;
   invalid?: boolean;
@@ -229,9 +305,11 @@ function Combobox({
   query,
   onQuery,
   onPick,
+  onBlurInput,
   placeholder,
   minChars = 2,
   extraTop,
+  showInitialItems = false,
   maxItems = 50,
   filterFn,
   invalid,
@@ -248,10 +326,10 @@ function Combobox({
   }, []);
 
   const filtered = useMemo(() => {
-    if (query.trim().length < minChars) return [];
+    if (query.trim().length < minChars) return showInitialItems ? items.slice(0, maxItems) : [];
     const fn = filterFn ?? ((it: RefItem, q: string) => startsWithWord(it.search ?? it.label, q));
     return items.filter((it) => fn(it, query)).slice(0, maxItems);
-  }, [items, query, minChars, filterFn, maxItems]);
+  }, [items, query, minChars, showInitialItems, filterFn, maxItems]);
 
   return (
     <div className="relative" ref={wrapRef}>
@@ -265,6 +343,7 @@ function Combobox({
             onQuery(e.target.value);
             setOpen(true);
           }}
+          onBlur={onBlurInput}
         />
         {value && (
           <Button
@@ -284,7 +363,7 @@ function Combobox({
       {open && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-72 overflow-auto">
           {extraTop}
-          {query.trim().length < minChars ? (
+          {query.trim().length < minChars && !showInitialItems ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">
               Wpisz co najmniej {minChars} znaki…
             </div>
@@ -517,26 +596,11 @@ function Page() {
     return s;
   };
 
-  /** Apply patch + recalc chain when applicable (catalog mode with standard). */
-  const applyChainedPatch = (i: number, patch: Partial<PozycjaForm>) => {
+  /** Apply patch + one calculation pass for the whole position chain. */
+  const applyChainedPatch = (i: number, patch: Partial<PozycjaForm>, changedField: ChangedField) => {
     const merged: PozycjaForm = { ...pozycje[i], ...patch };
-    let finalPatch: Partial<PozycjaForm> = { ...patch };
-
-    if (merged.opakowanie_source === "catalog") {
-      const std = findStandard(merged.produkt_id, merged.opakowanie_id, merged.kraj_id);
-      if (std) {
-        const palety = Math.max(0, Number(merged.palety) || 0);
-        const calc = calcFromStandard(palety, std);
-        finalPatch = {
-          ...finalPatch,
-          ilosc_opakowan: calc.ilosc_opakowan || merged.ilosc_opakowan,
-          netto_kg: calc.netto_kg || merged.netto_kg,
-          brutto_kg: calc.brutto_kg || merged.brutto_kg,
-          weights_autofilled: true,
-        };
-      }
-    }
-    updateRow(i, finalPatch);
+    const std = findStandard(merged.produkt_id, merged.opakowanie_id, merged.kraj_id);
+    updateRow(i, calculatePositionLine(merged, changedField, std).next);
   };
 
   const onPickProdukt = (i: number, id: string, label: string) => {
@@ -544,14 +608,32 @@ function Page() {
     // Reset odmiana if it doesn't match new produkt
     const od = odmiany.find((x) => x.id === cur.odmiana_id);
     const odmiana_id = od && od.produkt_id !== id ? "" : cur.odmiana_id;
-    applyChainedPatch(i, { produkt_id: id, produkt_query: label, odmiana_id });
+    applyChainedPatch(
+      i,
+      {
+        produkt_id: id,
+        produkt_query: label,
+        odmiana_id,
+        opakowanie_source: "none",
+        opakowanie_id: "",
+        opakowanie_query: "",
+        opakowanie_custom_text: "",
+        material_autofilled: false,
+        weights_autofilled: false,
+      },
+      "produkt",
+    );
   };
 
   const onPickKrajPoch = (i: number, id: string, label: string) => {
-    applyChainedPatch(i, { kraj_id: id, kraj_query: label });
+    applyChainedPatch(i, { kraj_id: id, kraj_query: label }, "kraj");
   };
 
   const onPickOpakowanie = (i: number, id: string, label: string) => {
+    if (!id) {
+      onOpakowanieQuery(i, "");
+      return;
+    }
     const cur = pozycje[i];
     const opak = opakowania.find((x) => x.id === id);
     const patch: Partial<PozycjaForm> = {
@@ -564,41 +646,27 @@ function Page() {
       patch.material_tary = opak.material_canonical;
       patch.material_autofilled = true;
     }
-    applyChainedPatch(i, patch);
+    applyChainedPatch(i, patch, "opakowanie");
   };
 
-  const onUseCustomOpakowanie = (i: number) => {
+  const onOpakowanieQuery = (i: number, raw: string) => {
+    const text = raw.trim();
     updateRow(i, {
-      opakowanie_source: "custom",
+      opakowanie_query: raw,
       opakowanie_id: "",
-      opakowanie_query: "",
-      material_autofilled: false,
-      weights_autofilled: false,
-    });
-  };
-
-  const onUseNoOpakowanie = (i: number) => {
-    updateRow(i, {
-      opakowanie_source: "none",
-      opakowanie_id: "",
-      opakowanie_query: "",
-      opakowanie_custom_text: "",
-      material_autofilled: false,
-      weights_autofilled: false,
-    });
-  };
-
-  const onBackToCatalog = (i: number) => {
-    updateRow(i, {
-      opakowanie_source: "catalog",
-      opakowanie_custom_text: "",
+      opakowanie_custom_text: text,
+      opakowanie_source: text ? "custom" : "none",
       material_autofilled: false,
       weights_autofilled: false,
     });
   };
 
   const onPaletyChange = (i: number, v: string) => {
-    applyChainedPatch(i, { palety: v });
+    applyChainedPatch(i, { palety: v }, "palety");
+  };
+
+  const onIloscOpakowanChange = (i: number, v: string) => {
+    applyChainedPatch(i, { ilosc_opakowan: v }, "ilosc_opakowan");
   };
 
   const onMaterialChange = (i: number, v: "karton" | "drewno" | "plastik") => {
@@ -608,7 +676,17 @@ function Page() {
   // -----------------------------------------------------------------
   // Derived: per-line errors, totals, capacity
   // -----------------------------------------------------------------
-  const lineErrors: FieldErrors[] = useMemo(() => pozycje.map(validatePosition), [pozycje]);
+  const lineErrors: FieldErrors[] = useMemo(
+    () => pozycje.map((p) => validatePosition(p, findStandard(p.produkt_id, p.opakowanie_id, p.kraj_id))),
+    [pozycje, standardy, kraje],
+  );
+  const lineWarnings: string[][] = useMemo(
+    () =>
+      pozycje.map((p) =>
+        calculatePositionLine(p, "notes", findStandard(p.produkt_id, p.opakowanie_id, p.kraj_id)).warnings,
+      ),
+    [pozycje, standardy, kraje],
+  );
 
   const totals = useMemo(() => {
     const palety = pozycje.reduce((s, p) => s + (Number(p.palety) || 0), 0);
@@ -850,7 +928,7 @@ function Page() {
           <CardContent className="space-y-4">
             {pozycje.map((p, i) => {
               const errs = lineErrors[i];
-              const showErrs = submitTried;
+              const showErrs = true;
               const odmianyForProdukt = p.produkt_id
                 ? odmiany.filter((o) => o.produkt_id === p.produkt_id)
                 : [];
@@ -861,10 +939,8 @@ function Page() {
                     ...opakowania.filter((o) => !suggested.has(o.id)),
                   ]
                 : opakowania;
-              const opakSelectedLabel =
-                p.opakowanie_source === "catalog" && p.opakowanie_id
-                  ? opakowania.find((o) => o.id === p.opakowanie_id)?.label ?? ""
-                  : p.opakowanie_query;
+              const opakSelectedLabel = p.opakowanie_query;
+              const warnings = lineWarnings[i] ?? [];
               const produktLabel =
                 p.produkt_query || (p.produkt_id ? produkty.find((x) => x.id === p.produkt_id)?.label ?? "" : "");
               const krajLabel =
@@ -888,7 +964,16 @@ function Page() {
                         items={produkty}
                         value={p.produkt_id}
                         query={produktLabel}
-                        onQuery={(s) => updateRow(i, { produkt_query: s, produkt_id: "", odmiana_id: "" })}
+                        onQuery={(s) =>
+                          updateRow(i, {
+                            produkt_query: s,
+                            produkt_id: "",
+                            odmiana_id: "",
+                            opakowanie_id: "",
+                            opakowanie_source: p.opakowanie_query.trim() ? "custom" : "none",
+                            weights_autofilled: false,
+                          })
+                        }
                         onPick={(id, label) => onPickProdukt(i, id, label)}
                         placeholder="Np. banan, ananas…"
                         invalid={showErrs && !!errs.produkt_id}
@@ -903,10 +988,12 @@ function Page() {
                         items={kraje}
                         value={p.kraj_id}
                         query={krajLabel}
-                        onQuery={(s) => updateRow(i, { kraj_query: s, kraj_id: "" })}
+                        onQuery={(s) => updateRow(i, { kraj_query: s, kraj_id: "", weights_autofilled: false })}
                         onPick={(id, label) => onPickKrajPoch(i, id, label)}
                         placeholder="Np. Hiszpania, Maroko…"
+                        invalid={showErrs && !!errs.kraj_id}
                       />
+                      {showErrs && <FieldErr msg={errs.kraj_id} />}
                     </div>
 
                     {/* 3. Odmiana */}
@@ -921,7 +1008,7 @@ function Page() {
                           Brak odmian dla wybranego produktu
                         </p>
                       ) : (
-                        <Select value={p.odmiana_id} onValueChange={(v) => updateRow(i, { odmiana_id: v })}>
+                        <Select value={p.odmiana_id} onValueChange={(v) => applyChainedPatch(i, { odmiana_id: v }, "odmiana")}>
                           <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                           <SelectContent>
                             {odmianyForProdukt.map((x) => (
@@ -932,87 +1019,34 @@ function Page() {
                       )}
                     </div>
 
-                    {/* 4. Opakowanie (optional) — catalog / custom / none */}
+                    {/* 4. Opakowanie — one adaptive business input */}
                     <div className="md:col-span-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <Label>Opakowanie</Label>
-                        <div className="flex gap-1 text-xs">
-                          <button
-                            type="button"
-                            onClick={() => onBackToCatalog(i)}
-                            className={cn(
-                              "px-2 py-0.5 rounded border",
-                              p.opakowanie_source === "catalog" ? "bg-accent" : "hover:bg-accent",
-                            )}
-                          >
-                            Z katalogu
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onUseCustomOpakowanie(i)}
-                            className={cn(
-                              "px-2 py-0.5 rounded border",
-                              p.opakowanie_source === "custom" ? "bg-accent" : "hover:bg-accent",
-                            )}
-                          >
-                            Własne
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onUseNoOpakowanie(i)}
-                            className={cn(
-                              "px-2 py-0.5 rounded border",
-                              p.opakowanie_source === "none" ? "bg-accent" : "hover:bg-accent",
-                            )}
-                          >
-                            Brak
-                          </button>
-                        </div>
-                      </div>
-                      {p.opakowanie_source === "custom" && (
-                        <Input
-                          placeholder="Wpisz nazwę własnego opakowania (max 200 znaków)"
-                          maxLength={200}
-                          value={p.opakowanie_custom_text}
-                          onChange={(e) => updateRow(i, { opakowanie_custom_text: e.target.value })}
-                          className={cn(showErrs && errs.opakowanie_custom_text && "border-destructive")}
-                        />
-                      )}
-                      {p.opakowanie_source === "catalog" && (
-                        <>
-                          <Combobox
-                            items={opakSorted}
-                            value={p.opakowanie_id}
-                            query={opakSelectedLabel}
-                            onQuery={(s) => updateRow(i, { opakowanie_query: s, opakowanie_id: "" })}
-                            onPick={(id, label) => onPickOpakowanie(i, id, label)}
-                            placeholder={p.produkt_id ? "Wyszukaj opakowanie…" : "Wybierz produkt lub wpisz min. 2 znaki"}
-                            minChars={2}
-                            invalid={showErrs && !!errs.opakowanie}
-                            extraTop={
-                              <button
-                                type="button"
-                                className="block w-full text-left px-3 py-2 text-sm bg-accent/40 hover:bg-accent border-b font-medium"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  onUseCustomOpakowanie(i);
-                                }}
-                              >
-                                ➕ Wpisz własne opakowanie
-                              </button>
-                            }
-                          />
-                          {p.produkt_id && suggested.size > 0 && (
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Pokazujemy najpierw opakowania znane dla tego produktu ({suggested.size}).
-                            </p>
-                          )}
-                        </>
-                      )}
-                      {p.opakowanie_source === "none" && (
-                        <p className="text-xs text-muted-foreground py-1">
-                          Bez opakowania. Wprowadź ręcznie palety, wagi i materiał tary.
+                      <Label>Opakowanie</Label>
+                      <Combobox
+                        items={opakSorted}
+                        value={p.opakowanie_id}
+                        query={opakSelectedLabel}
+                        onQuery={(s) => onOpakowanieQuery(i, s)}
+                        onPick={(id, label) => onPickOpakowanie(i, id, label)}
+                        onBlurInput={() => {
+                          const text = p.opakowanie_query.trim();
+                          if (!p.opakowanie_id && text !== p.opakowanie_custom_text) onOpakowanieQuery(i, text);
+                        }}
+                        placeholder={p.produkt_id ? "Wybierz z listy, wpisz własne albo zostaw puste" : "Najpierw wybierz produkt"}
+                        minChars={2}
+                        showInitialItems={!!p.produkt_id}
+                        invalid={showErrs && !!errs.opakowanie_custom_text}
+                      />
+                      {p.produkt_id && suggested.size > 0 && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Najpierw widoczne są opakowania znane dla tego produktu ({suggested.size}).
                         </p>
+                      )}
+                      {p.opakowanie_source === "custom" && p.opakowanie_custom_text && (
+                        <p className="mt-1 text-xs text-muted-foreground">Własne opakowanie — wagi wpisz ręcznie.</p>
+                      )}
+                      {warnings.length > 0 && (
+                        <p className="mt-1 text-xs text-muted-foreground">{warnings[0]}</p>
                       )}
                       {showErrs && <FieldErr msg={errs.opakowanie ?? errs.opakowanie_custom_text} />}
                     </div>
@@ -1046,9 +1080,9 @@ function Page() {
                         step="1"
                         value={p.palety}
                         onChange={(e) => onPaletyChange(i, e.target.value)}
-                        className={cn(showErrs && errs.palety && "border-destructive")}
+                        className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive")}
                       />
-                      {showErrs && <FieldErr msg={errs.palety} />}
+                      {showErrs && <FieldErr msg={errs.palety ?? (totals.palety > MAX_PALETY ? "Przekroczono limit auta 26 palet" : undefined)} />}
                     </div>
 
                     {/* 7. Ilość opakowań */}
@@ -1059,10 +1093,10 @@ function Page() {
                         min="0"
                         step="1"
                         value={p.ilosc_opakowan}
-                        onChange={(e) =>
-                          updateRow(i, { ilosc_opakowan: e.target.value, weights_autofilled: false })
-                        }
+                        onChange={(e) => onIloscOpakowanChange(i, e.target.value)}
+                        className={cn(showErrs && errs.ilosc_opakowan && "border-destructive")}
                       />
+                      {showErrs && <FieldErr msg={errs.ilosc_opakowan} />}
                     </div>
 
                     {/* 8. Netto */}
@@ -1074,7 +1108,7 @@ function Page() {
                         step="0.01"
                         value={p.netto_kg}
                         onChange={(e) =>
-                          updateRow(i, { netto_kg: e.target.value, weights_autofilled: false })
+                          applyChainedPatch(i, { netto_kg: e.target.value }, "netto_kg")
                         }
                         className={cn(showErrs && errs.netto_kg && "border-destructive")}
                       />
@@ -1090,11 +1124,11 @@ function Page() {
                         step="0.01"
                         value={p.brutto_kg}
                         onChange={(e) =>
-                          updateRow(i, { brutto_kg: e.target.value, weights_autofilled: false })
+                          applyChainedPatch(i, { brutto_kg: e.target.value }, "brutto_kg")
                         }
-                        className={cn(showErrs && errs.brutto_kg && "border-destructive")}
+                        className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive")}
                       />
-                      {showErrs && <FieldErr msg={errs.brutto_kg} />}
+                      {showErrs && <FieldErr msg={errs.brutto_kg ?? (totals.brutto > MAX_BRUTTO_KG ? "Przekroczono limit auta 21500 kg" : undefined)} />}
                     </div>
 
                     {/* 10. Cena zakupu */}
