@@ -56,6 +56,7 @@ function materialLabel(m: string): string {
 }
 
 function opakLabel(p: Pozycja, catalogMap: Map<string, string>): string {
+  if (p.opakowanie_source === "none") return "Bez opakowania";
   if (p.opakowanie_source === "custom") return p.opakowanie_custom_text || "—";
   if (p.opakowanie_id) return catalogMap.get(p.opakowanie_id) ?? p.opakowanie_id;
   return "—";
