@@ -704,9 +704,11 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     if (!krajId) errs.push(krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany");
     if (!dataZaladunku) errs.push("Data załadunku wymagana");
     else if (dataZaladunku < todayStr) errs.push("Data załadunku nie może być wcześniejsza niż dzisiaj");
-    if (!dataDostawy) errs.push("Data dostawy / przyjazdu wymagana");
+    if (!dataDostawy) errs.push("Data dostawy wymagana");
     else if (dataZaladunku && dataDostawy <= dataZaladunku) errs.push("Data dostawy musi być późniejsza niż data załadunku");
-    if (!managerId) errs.push("Manager importu wymagany");
+    if (!managerId) errs.push("Import manager wymagany");
+    if ((notes ?? "").length > 100) errs.push("Komentarz: maksymalnie 100 znaków");
+
     return errs;
   }, [dataZaladunku, dataDostawy, dostawcaId, dostawcaQuery, krajId, krajZaladunkuQuery, managerId, todayStr]);
 
