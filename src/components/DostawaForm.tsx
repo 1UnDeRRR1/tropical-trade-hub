@@ -1019,7 +1019,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             <div className="min-w-0">
               <Label>Data załadunku *</Label>
               <Input type="date" min={todayStr} value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
-                     className={cn("h-10 w-full min-w-0 max-w-full block text-xs px-2", submitTried && (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive", shouldPulse("data_zaladunku", submitTried && (!dataZaladunku || dataZaladunku < todayStr)) && "field-invalid-pulse")} />
+                     className={cn("h-10 w-full min-w-0 max-w-full block text-xs px-2", (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive", shouldPulse("data_zaladunku", !dataZaladunku || dataZaladunku < todayStr) && "field-invalid-pulse")} />
               {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
               {submitTried && dataZaladunku && dataZaladunku < todayStr && (
                 <FieldErr msg="Data załadunku nie może być wcześniejsza niż dzisiaj" />
