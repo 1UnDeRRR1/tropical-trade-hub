@@ -135,11 +135,14 @@ function Page() {
         d.kraj_id
           ? supabase.from("kraje").select("kraj_id, nazwa_pl").eq("kraj_id", d.kraj_id).maybeSingle()
           : Promise.resolve({ data: null }),
-        supabase
-          .from("uzytkownicy")
-          .select("uzytkownik_id, imie_nazwisko")
-          .eq("uzytkownik_id", d.import_manager_id)
-          .maybeSingle(),
+        isSuper
+          ? supabase
+              .from("uzytkownicy")
+              .select("uzytkownik_id, imie_nazwisko")
+              .eq("uzytkownik_id", d.import_manager_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+
         list.length
           ? supabase
               .from("produkty")
