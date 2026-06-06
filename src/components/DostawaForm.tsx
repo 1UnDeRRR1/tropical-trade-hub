@@ -17,6 +17,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// ====================================================================
+// ANTI-REGRESSION FIELD CHECKLIST — do NOT remove fields silently.
+// Any removal requires explicit owner approval in the prompt.
+// Header (must be visible):
+//   Dostawca, Kraj załadunku, Data załadunku, Data dostawy, Import manager, Komentarz
+// Position (must be visible):
+//   Produkt, Kraj pochodzenia, Odmiana/Sort, Opakowanie, Materiał tary,
+//   Palety, Ilość opakowań, Netto, Brutto, Cena za 1 kg,
+//   Cena za opakowanie (derived display-only), Komentarz pozycji
+// BLOCKED — NOT in DB/RPC, do NOT fake in UI/notes/state:
+//   Marka, Kaliber, Klasa, Cena transportu za auto, Koszt własny 1 kg,
+//   Dodaj nową dostawę (multi-dostawa session)
+// ====================================================================
+
 // Vehicle capacity hard limits
 const MAX_PALETY = 26;
 const MAX_BRUTTO_KG = 21500;
@@ -636,6 +650,20 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
 
   // ---------- Row ops ----------
   const addRow = () => setPozycje((p) => [...p, { ...EMPTY_POZ }]);
+  const duplicateLastRow = () => setPozycje((p) => {
+    // Find last "meaningfully filled" row (has produkt_id) — fallback to last row.
+    const sourceIdx = (() => {
+      for (let i = p.length - 1; i >= 0; i--) if (p[i].produkt_id) return i;
+      return p.length - 1;
+    })();
+    const src = p[sourceIdx];
+    if (!src) return [...p, { ...EMPTY_POZ }];
+    // Strip id / position_id — duplicate must NEVER reuse DB row id.
+    const { id: _ignoredId, ...rest } = src;
+    void _ignoredId;
+    const clone: PozycjaForm = { ...rest };
+    return [...p, clone];
+  });
   const removeRow = (i: number) => {
     const target = pozycje[i];
     if (mode === "edit" && target?.id) {
@@ -1066,39 +1094,40 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
       </Card>
 
 
-      <Card className={cn("sticky top-2 z-20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80", capacityErrors.length > 0 && "border-destructive")}>
-        <CardHeader><CardTitle>Wykorzystanie auta</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-          <div>
-            <div className="text-muted-foreground">Palety</div>
-            <div className={cn("font-semibold", totals.palety > MAX_PALETY && "text-destructive")}>{totals.palety} / {MAX_PALETY}</div>
+      {/* Compact sticky capacity bar — one row, no large card/title.
+          Dropdowns use z-50 and stay above this z-20 bar. */}
+      <div className={cn(
+        "sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80",
+        capacityErrors.length > 0 && "ring-1 ring-destructive rounded-md",
+      )}>
+        <div className="flex flex-wrap gap-1.5 text-xs sm:text-sm">
+          <div className={cn(
+            "flex-1 min-w-0 rounded-md border bg-card px-2 py-1 truncate",
+            (totals.palety > MAX_PALETY || totals.brutto > MAX_BRUTTO_KG) && "border-destructive text-destructive",
+          )}>
+            <span className="text-muted-foreground">Załadowano:</span>{" "}
+            <span className="font-semibold tabular-nums">{totals.brutto.toFixed(0)} kg / {totals.palety} pal.</span>
           </div>
-          <div>
-            <div className="text-muted-foreground">Wolne palety</div>
-            <div className="font-semibold">{Math.max(0, MAX_PALETY - totals.palety)}</div>
+          <div className="flex-1 min-w-0 rounded-md border bg-card px-2 py-1 truncate">
+            <span className="text-muted-foreground">Wolne:</span>{" "}
+            <span className="font-semibold tabular-nums">
+              {Math.max(0, MAX_BRUTTO_KG - totals.brutto).toFixed(0)} kg / {Math.max(0, MAX_PALETY - totals.palety)} pal.
+            </span>
           </div>
-          <div>
-            <div className="text-muted-foreground">Brutto kg</div>
-            <div className={cn("font-semibold", totals.brutto > MAX_BRUTTO_KG && "text-destructive")}>{totals.brutto.toFixed(2)} / {MAX_BRUTTO_KG}</div>
+        </div>
+        {capacityErrors.length > 0 && (
+          <div className="mt-1 text-destructive text-xs space-y-0.5">
+            {capacityErrors.map((m, i) => (
+              <div key={i} className="flex items-center gap-1"><AlertCircle className="h-3 w-3 shrink-0" /> <span className="truncate">{m}</span></div>
+            ))}
           </div>
-          <div>
-            <div className="text-muted-foreground">Wolne kg</div>
-            <div className="font-semibold">{Math.max(0, MAX_BRUTTO_KG - totals.brutto).toFixed(2)}</div>
-          </div>
-          {capacityErrors.length > 0 && (
-            <div className="col-span-2 md:col-span-4 text-destructive text-xs space-y-1">
-              {capacityErrors.map((m, i) => (
-                <div key={i} className="flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {m}</div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>Pozycje</CardTitle>
-          <Button type="button" variant="outline" size="sm" onClick={addRow}>
+          <Button type="button" variant="outline" size="sm" onClick={addRow} className="min-h-11 touch-manipulation">
             <Plus className="h-4 w-4" /> Dodaj pozycję
           </Button>
         </CardHeader>
@@ -1335,14 +1364,29 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             </div>
           )}
 
+          {/* Bottom add actions — near save panel, so manager doesn't scroll up. */}
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={addRow}
+              className="min-h-11 touch-manipulation flex-1">
+              <Plus className="h-4 w-4" /> Dodaj pozycję
+            </Button>
+            <Button type="button" variant="outline" onClick={duplicateLastRow}
+              className="min-h-11 touch-manipulation flex-1">
+              <Plus className="h-4 w-4" /> Dodaj analogiczną pozycję
+            </Button>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-2 pt-4">
-            <Button type="button" variant="outline" disabled={saving} onClick={() => submit("draft")}>
+            <Button type="button" variant="outline" disabled={saving} onClick={() => submit("draft")}
+              className="min-h-11 touch-manipulation">
               {mode === "edit" ? "Zapisz zmiany (szkic)" : "Zapisz jako szkic"}
             </Button>
-            <Button type="button" disabled={saving} onClick={() => submit("planned")}>
+            <Button type="button" disabled={saving} onClick={() => submit("planned")}
+              className="min-h-11 touch-manipulation">
               {mode === "edit" ? "Zapisz zmiany (zaplanowana)" : "Zapisz jako zaplanowana"}
             </Button>
             <Button type="button" variant="ghost" disabled={saving}
+              className="min-h-11 touch-manipulation"
               onClick={() => mode === "edit" && existing
                 ? navigate({ to: "/dostawy/$id", params: { id: existing.id } })
                 : navigate({ to: "/dostawy" })}>
