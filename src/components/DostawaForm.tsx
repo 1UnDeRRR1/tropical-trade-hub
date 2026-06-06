@@ -1043,7 +1043,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
               <Input value={managers[0].label} readOnly className="bg-muted/40" />
             ) : (
               <Select value={managerId} onValueChange={setManagerId} disabled={isImportMgr && !isSuper}>
-                <SelectTrigger className={cn(submitTried && !managerId && "border-destructive", shouldPulse("manager", submitTried && !managerId) && "field-invalid-pulse")}>
+                <SelectTrigger className={cn(!managerId && "border-destructive", shouldPulse("manager", !managerId) && "field-invalid-pulse")}>
                   <SelectValue placeholder="Wybierz" />
                 </SelectTrigger>
                 <SelectContent>
