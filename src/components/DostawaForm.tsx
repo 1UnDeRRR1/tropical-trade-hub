@@ -710,7 +710,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     if ((notes ?? "").length > 100) errs.push("Komentarz: maksymalnie 100 znaków");
 
     return errs;
-  }, [dataZaladunku, dataDostawy, dostawcaId, dostawcaQuery, krajId, krajZaladunkuQuery, managerId, todayStr]);
+  }, [dataZaladunku, dataDostawy, dostawcaId, dostawcaQuery, krajId, krajZaladunkuQuery, managerId, notes, todayStr]);
 
   const hasAnyError =
     headerErrors.length > 0 ||
