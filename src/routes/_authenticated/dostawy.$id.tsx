@@ -57,12 +57,15 @@ function StatusBadge({ status }: { status: string }) {
 
 function Page() {
   const { id } = Route.useParams();
-  const { roleKeys } = useCurrentProfile();
+  const { profile, roleKeys } = useCurrentProfile();
+  const isSuper = roleKeys.includes("super_admin");
+  const isImportMgr = roleKeys.includes("import_manager");
   const canSeeFinance =
-    roleKeys.includes("super_admin") ||
+    isSuper ||
     roleKeys.includes("kierownik") ||
     roleKeys.includes("asystent_kierownika") ||
-    roleKeys.includes("import_manager");
+    isImportMgr;
+
 
   const [dostawa, setDostawa] = useState<Dostawa | null>(null);
   const [pozycje, setPozycje] = useState<Pozycja[]>([]);
@@ -132,11 +135,14 @@ function Page() {
         d.kraj_id
           ? supabase.from("kraje").select("kraj_id, nazwa_pl").eq("kraj_id", d.kraj_id).maybeSingle()
           : Promise.resolve({ data: null }),
-        supabase
-          .from("uzytkownicy")
-          .select("uzytkownik_id, imie_nazwisko")
-          .eq("uzytkownik_id", d.import_manager_id)
-          .maybeSingle(),
+        isSuper
+          ? supabase
+              .from("uzytkownicy")
+              .select("uzytkownik_id, imie_nazwisko")
+              .eq("uzytkownik_id", d.import_manager_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+
         list.length
           ? supabase
               .from("produkty")
@@ -178,7 +184,10 @@ function Page() {
         : d.kraj_id || "";
       const mgrLabel = mRef.data
         ? ((mRef.data as { imie_nazwisko: string | null }).imie_nazwisko || d.import_manager_id)
-        : d.import_manager_id;
+        : !isSuper && isImportMgr && profile?.uzytkownik_id === d.import_manager_id && profile?.imie_nazwisko
+          ? profile.imie_nazwisko
+          : d.import_manager_id;
+
 
       const produktyMap = new Map<string, string>();
       ((prodRef.data ?? []) as Array<{ produkt_id: string; nazwa_pl: string | null }>).forEach((x) =>
@@ -262,7 +271,8 @@ function Page() {
                 <CardTitle>Pozycje ({pozycje.length})</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                {/* Desktop: table */}
+                <div className="hidden md:block overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -301,8 +311,42 @@ function Page() {
                     </TableBody>
                   </Table>
                 </div>
+
+                {/* Mobile: cards */}
+                <div className="md:hidden p-3 space-y-2">
+                  {pozycje.map((p) => {
+                    const st = statuses.get(p.position_id);
+                    return (
+                      <div key={p.id} className="rounded-md border p-3 space-y-1 text-sm">
+                        <div className="font-mono text-xs text-primary">{p.position_id}</div>
+                        <div className="font-medium">{labels.produkty.get(p.produkt_id) ?? p.produkt_id}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {p.odmiana_id ? (labels.odmiany.get(p.odmiana_id) ?? p.odmiana_id) : "—"}
+                          {" · "}
+                          {labels.opakowania.get(p.opakowanie_id) ?? p.opakowanie_id}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Kraj poch.: {p.kraj_id ? (labels.kraje.get(p.kraj_id) ?? p.kraj_id) : "—"}
+                        </div>
+                        <div className="text-xs">
+                          Palety: <strong>{p.palety}</strong> · Netto: <strong>{Number(p.netto_kg).toFixed(2)} kg</strong>
+                        </div>
+                        {canSeeFinance && (
+                          <div className="text-xs">
+                            Cena: <strong>{Number(p.cena_zakupu).toFixed(2)} {p.waluta}</strong>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          <Badge variant="outline">stock: {st?.stock_status ?? "—"}</Badge>
+                          <Badge variant="outline">settlement: {st?.settlement_status ?? "—"}</Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </CardContent>
             </Card>
+
           </>
         ) : null}
       </div>

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RoleGuard } from "@/components/RoleGuard";
+import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
 import { Card, CardContent } from "@/components/ui/card";
 
 interface Row {
@@ -36,6 +38,11 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function Page() {
+  const { profile, roleKeys } = useCurrentProfile();
+  const isSuper = roleKeys.includes("super_admin");
+  const isImportMgr = roleKeys.includes("import_manager");
+  const canCreate = isSuper || isImportMgr;
+
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +79,9 @@ function Page() {
         krajIds.length
           ? supabase.from("kraje").select("kraj_id, nazwa_pl").in("kraj_id", krajIds)
           : Promise.resolve({ data: [], error: null }),
-        managerIds.length
+        // Only Superadministrator reads uzytkownicy directly.
+        // Import manager uses own profile name. Other roles see the id.
+        isSuper && managerIds.length
           ? supabase
               .from("uzytkownicy")
               .select("uzytkownik_id, imie_nazwisko")
@@ -96,6 +105,10 @@ function Page() {
       ((mgrRes.data ?? []) as Array<{ uzytkownik_id: string; imie_nazwisko: string | null }>).forEach(
         (u) => mgrMap.set(u.uzytkownik_id, u.imie_nazwisko || u.uzytkownik_id),
       );
+      // Self-name fallback for Import manager (his/her own rows).
+      if (!isSuper && isImportMgr && profile?.uzytkownik_id && profile.imie_nazwisko) {
+        mgrMap.set(profile.uzytkownik_id, profile.imie_nazwisko);
+      }
       const countMap = new Map<string, number>();
       ((pozRes.data ?? []) as Array<{ dostawa_id: string }>).forEach((p) =>
         countMap.set(p.dostawa_id, (countMap.get(p.dostawa_id) ?? 0) + 1),
@@ -115,18 +128,22 @@ function Page() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isSuper, isImportMgr, profile?.uzytkownik_id, profile?.imie_nazwisko]);
+
 
   return (
     <RoleGuard path="/dostawy">
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-2xl font-bold">Dostawy</h1>
-          <Button asChild>
-            <Link to="/dostawy/nowa">
-              <Plus className="h-4 w-4" /> Utwórz dostawę
-            </Link>
-          </Button>
+          {canCreate && (
+            <Button asChild>
+              <Link to="/dostawy/nowa">
+                <Plus className="h-4 w-4" /> Utwórz dostawę
+              </Link>
+            </Button>
+          )}
+
         </div>
 
         {error && (
