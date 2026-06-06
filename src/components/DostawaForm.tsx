@@ -1175,8 +1175,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                           }
                         }}
                         placeholder="Np. Hiszpania, Maroko…"
-                        invalid={showErrs && !!errs.kraj_id}
-                        invalidPulse={shouldPulse(`row_${i}_kraj_id`, showErrs && !!errs.kraj_id)}
+                        invalid={!!errs.kraj_id}
+                        invalidPulse={shouldPulse(`row_${i}_kraj_id`, !!errs.kraj_id)}
                       />
                       {showErrs && <FieldErr msg={errs.kraj_id} />}
                     </div>
