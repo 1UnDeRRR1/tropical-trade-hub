@@ -1027,60 +1027,62 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <Label>Produkt *</Label>
-                    <Combobox
-                      items={produkty}
-                      value={p.produkt_id}
-                      query={produktLabel}
-                      filterFn={produktFilter}
-                      onQuery={(s) => updateRow(i, {
-                        produkt_query: s, produkt_id: "", odmiana_id: "",
-                        opakowanie_id: "", opakowanie_source: p.opakowanie_query.trim() ? "custom" : "none",
-                        weights_autofilled: false,
-                      })}
-                      onPick={(id, label) => onPickProdukt(i, id, label)}
-                      onBlurInput={() => {
-                        setTimeout(() => {
-                          const cur = pozycje[i];
-                          if (cur && !cur.produkt_id && cur.produkt_query.trim()) {
-                            updateRow(i, { produkt_query: "" });
-                            triggerShake();
-                          }
-                        }, 220);
-                      }}
-                      placeholder="Np. cebula, onion, ananas…"
-                      invalid={showErrs && !!errs.produkt_id}
-                    />
-                    {showErrs && <FieldErr msg={errs.produkt_id} />}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label>Produkt *</Label>
+                      <Combobox
+                        items={produkty}
+                        value={p.produkt_id}
+                        query={produktLabel}
+                        filterFn={produktFilter}
+                        onQuery={(s) => updateRow(i, {
+                          produkt_query: s, produkt_id: "", odmiana_id: "",
+                          opakowanie_id: "", opakowanie_source: p.opakowanie_query.trim() ? "custom" : "none",
+                          weights_autofilled: false,
+                        })}
+                        onPick={(id, label) => onPickProdukt(i, id, label)}
+                        onBlurInput={() => {
+                          setTimeout(() => {
+                            const cur = pozycje[i];
+                            if (cur && !cur.produkt_id && cur.produkt_query.trim()) {
+                              updateRow(i, { produkt_query: "" });
+                              triggerShake();
+                            }
+                          }, 220);
+                        }}
+                        placeholder="Np. cebula, ananas…"
+                        invalid={showErrs && !!errs.produkt_id}
+                      />
+                      {showErrs && <FieldErr msg={errs.produkt_id} />}
+                    </div>
+
+                    <div>
+                      <Label>Kraj pochodzenia *</Label>
+                      <Combobox
+                        items={kraje}
+                        value={p.kraj_id}
+                        query={krajLabel}
+                        filterFn={krajFilter}
+                        onQuery={(s) => updateRow(i, { kraj_query: s, kraj_id: "", weights_autofilled: false })}
+                        onPick={(id, label) => onPickKrajPoch(i, id, label)}
+                        onBlurInput={() => {
+                          setTimeout(() => {
+                            const cur = pozycje[i];
+                            if (cur && !cur.kraj_id && cur.kraj_query.trim()) {
+                              updateRow(i, { kraj_query: "" });
+                              triggerShake();
+                            }
+                          }, 220);
+                        }}
+                        placeholder="Np. Hiszpania, Maroko…"
+                        invalid={showErrs && !!errs.kraj_id}
+                      />
+                      {showErrs && <FieldErr msg={errs.kraj_id} />}
+                    </div>
                   </div>
 
                   <div>
-                    <Label>Kraj pochodzenia *</Label>
-                    <Combobox
-                      items={kraje}
-                      value={p.kraj_id}
-                      query={krajLabel}
-                      filterFn={krajFilter}
-                      onQuery={(s) => updateRow(i, { kraj_query: s, kraj_id: "", weights_autofilled: false })}
-                      onPick={(id, label) => onPickKrajPoch(i, id, label)}
-                      onBlurInput={() => {
-                        setTimeout(() => {
-                          const cur = pozycje[i];
-                          if (cur && !cur.kraj_id && cur.kraj_query.trim()) {
-                            updateRow(i, { kraj_query: "" });
-                            triggerShake();
-                          }
-                        }, 220);
-                      }}
-                      placeholder="Np. Hiszpania, Spain, Maroko…"
-                      invalid={showErrs && !!errs.kraj_id}
-                    />
-                    {showErrs && <FieldErr msg={errs.kraj_id} />}
-                  </div>
-
-                  <div className="md:col-span-2">
                     <Label>Odmiana / Sort</Label>
                     {!p.produkt_id ? (
                       <p className="text-xs text-muted-foreground py-2">Najpierw wybierz produkt.</p>
@@ -1096,7 +1098,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     )}
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div>
                     <Label>Opakowanie</Label>
                     <Combobox
                       items={opakowania}
@@ -1124,7 +1126,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     {showErrs && <FieldErr msg={errs.opakowanie ?? errs.opakowanie_custom_text} />}
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div>
                     <Label>Materiał tary *</Label>
                     <div className="flex gap-2 mt-1">
                       {(["karton","drewno","plastik"] as const).map((m) => (
@@ -1139,61 +1141,67 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     {showErrs && <FieldErr msg={errs.material_tary} />}
                   </div>
 
-                  <div>
-                    <Label>Palety *</Label>
-                    <Input type="text" inputMode="numeric" pattern="\d*" value={p.palety}
-                      onChange={(e) => onPaletyChange(i, e.target.value)}
-                      className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive field-invalid-pulse")} />
-                    {showErrs && <FieldErr msg={errs.palety ?? (totals.palety > MAX_PALETY ? "Przekroczono limit auta 26 palet" : undefined)} />}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label>Palety *</Label>
+                      <Input type="text" inputMode="numeric" pattern="\d*" value={p.palety}
+                        onChange={(e) => onPaletyChange(i, e.target.value)}
+                        className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive field-invalid-pulse")} />
+                      {showErrs && <FieldErr msg={errs.palety ?? (totals.palety > MAX_PALETY ? "Limit auta 26 palet" : undefined)} />}
+                    </div>
+
+                    <div>
+                      <Label>Ilość opakowań *</Label>
+                      <Input type="text" inputMode="numeric" pattern="\d*" value={p.ilosc_opakowan}
+                        onChange={(e) => onIloscOpakowanChange(i, e.target.value)}
+                        className={cn(showErrs && errs.ilosc_opakowan && "border-destructive field-invalid-pulse")} />
+                      {showErrs && <FieldErr msg={errs.ilosc_opakowan} />}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label>Netto (kg) *</Label>
+                      <Input type="text" inputMode="decimal" value={p.netto_kg}
+                        onChange={(e) => applyChainedPatch(i, { netto_kg: e.target.value }, "netto_kg")}
+                        className={cn(showErrs && errs.netto_kg && "border-destructive field-invalid-pulse")} />
+                      {showErrs && <FieldErr msg={errs.netto_kg} />}
+                    </div>
+
+                    <div>
+                      <Label>Brutto (kg) *</Label>
+                      <Input type="text" inputMode="decimal" value={p.brutto_kg}
+                        onChange={(e) => applyChainedPatch(i, { brutto_kg: e.target.value }, "brutto_kg")}
+                        className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive field-invalid-pulse")} />
+                      {showErrs && <FieldErr msg={errs.brutto_kg ?? (totals.brutto > MAX_BRUTTO_KG ? "Limit auta 21500 kg" : undefined)} />}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label>Cena za 1 kg (€) *</Label>
+                      <Input type="text" inputMode="decimal" value={p.cena_zakupu}
+                        onChange={(e) => updateRow(i, { cena_zakupu: e.target.value })}
+                        className={cn(showErrs && errs.cena_zakupu && "border-destructive field-invalid-pulse")} />
+                      {showErrs && <FieldErr msg={errs.cena_zakupu} />}
+                    </div>
+
+                    {(() => {
+                      const netto = toNum(p.netto_kg);
+                      const cena = toNum(p.cena_zakupu);
+                      const ilosc = toNum(p.ilosc_opakowan);
+                      const cenaZaOpak = netto !== null && cena !== null && ilosc !== null && ilosc > 0
+                        ? (netto / ilosc) * cena : null;
+                      return (
+                        <div>
+                          <Label>Cena za opakowanie (€)</Label>
+                          <Input disabled value={cenaZaOpak === null ? "" : cenaZaOpak.toFixed(2)} placeholder="—" />
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div>
-                    <Label>Ilość opakowań *</Label>
-                    <Input type="text" inputMode="numeric" pattern="\d*" value={p.ilosc_opakowan}
-                      onChange={(e) => onIloscOpakowanChange(i, e.target.value)}
-                      className={cn(showErrs && errs.ilosc_opakowan && "border-destructive field-invalid-pulse")} />
-                    {showErrs && <FieldErr msg={errs.ilosc_opakowan} />}
-                  </div>
-
-                  <div>
-                    <Label>Netto (kg) *</Label>
-                    <Input type="text" inputMode="decimal" value={p.netto_kg}
-                      onChange={(e) => applyChainedPatch(i, { netto_kg: e.target.value }, "netto_kg")}
-                      className={cn(showErrs && errs.netto_kg && "border-destructive field-invalid-pulse")} />
-                    {showErrs && <FieldErr msg={errs.netto_kg} />}
-                  </div>
-
-                  <div>
-                    <Label>Brutto (kg) *</Label>
-                    <Input type="text" inputMode="decimal" value={p.brutto_kg}
-                      onChange={(e) => applyChainedPatch(i, { brutto_kg: e.target.value }, "brutto_kg")}
-                      className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive field-invalid-pulse")} />
-                    {showErrs && <FieldErr msg={errs.brutto_kg ?? (totals.brutto > MAX_BRUTTO_KG ? "Przekroczono limit auta 21500 kg" : undefined)} />}
-                  </div>
-
-                  <div>
-                    <Label>Cena za 1 kg (€) *</Label>
-                    <Input type="text" inputMode="decimal" value={p.cena_zakupu}
-                      onChange={(e) => updateRow(i, { cena_zakupu: e.target.value })}
-                      className={cn(showErrs && errs.cena_zakupu && "border-destructive field-invalid-pulse")} />
-                    {showErrs && <FieldErr msg={errs.cena_zakupu} />}
-                  </div>
-
-                  {(() => {
-                    const netto = toNum(p.netto_kg);
-                    const cena = toNum(p.cena_zakupu);
-                    const ilosc = toNum(p.ilosc_opakowan);
-                    const cenaZaOpak = netto !== null && cena !== null && ilosc !== null && ilosc > 0
-                      ? (netto / ilosc) * cena : null;
-                    return (
-                      <div>
-                        <Label>Cena za opakowanie (€)</Label>
-                        <Input disabled value={cenaZaOpak === null ? "" : cenaZaOpak.toFixed(2)} placeholder="—" />
-                      </div>
-                    );
-                  })()}
-
-                  <div className="md:col-span-2">
                     <Label>Komentarz</Label>
                     <Input value={p.notes} maxLength={100}
                       onChange={(e) => updateRow(i, { notes: e.target.value })}
