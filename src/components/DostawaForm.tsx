@@ -476,7 +476,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
       }
       setDostawcaAliases(da);
     })();
-  }, [isSuper, isImportMgr, profile?.uzytkownik_id, profile?.imie_nazwisko]);
+  }, [isSuper, isImportMgr, canLoadManagers, profile?.uzytkownik_id, profile?.imie_nazwisko]);
 
   // Hydrate produkt_query / kraj_query / opakowanie_query after labels load (edit mode)
   useEffect(() => {
