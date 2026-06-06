@@ -261,12 +261,23 @@ function Page() {
           </Card>
         ) : dostawa ? (
           <>
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
-                <h1 className="text-2xl font-bold font-mono">{dostawa.numer_dostawy}</h1>
-                <p className="text-sm text-muted-foreground">Widok tylko do odczytu</p>
+                <h1 className="text-2xl font-bold">Dostawa</h1>
+                <p className="text-xs text-muted-foreground">
+                  Wewnętrzny numer systemowy: <span className="font-mono">{dostawa.numer_dostawy}</span>
+                  {" "}— nie jest to finalny numer biznesowy.
+                </p>
               </div>
-              <StatusBadge status={dostawa.status} />
+              <div className="flex items-center gap-2">
+                <StatusBadge status={dostawa.status} />
+                {(dostawa.status === "draft" || dostawa.status === "planned") &&
+                  (isSuper || (isImportMgr && profile?.uzytkownik_id === dostawa.import_manager_id)) && (
+                  <Button asChild size="sm">
+                    <Link to="/dostawy/$id/edytuj" params={{ id: dostawa.id }}>Edytuj</Link>
+                  </Button>
+                )}
+              </div>
             </div>
 
             <Card>
