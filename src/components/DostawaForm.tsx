@@ -218,7 +218,8 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
     <div className="relative" ref={wrapRef}>
       <div className="flex gap-1">
         <Input value={query} placeholder={placeholder}
-          className={cn(invalid && "border-destructive focus-visible:ring-destructive")}
+          className={cn(invalid && "border-destructive focus-visible:ring-destructive field-invalid-pulse")}
+          aria-invalid={invalid || undefined}
           onFocus={() => setOpen(true)}
           onChange={(e) => { onQuery(e.target.value); setOpen(true); }}
           onBlur={onBlurInput} />
@@ -232,7 +233,7 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-72 overflow-auto">
           {extraTop}
           {query.trim().length < minChars && !showInitialItems ? (
-            <div className="px-3 py-2 text-xs text-muted-foreground">Wpisz co najmniej {minChars} znaki…</div>
+            <div className="px-3 py-2 text-xs text-muted-foreground">Zacznij wpisywać…</div>
           ) : filtered.length === 0 ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">Brak wyników</div>
           ) : (
