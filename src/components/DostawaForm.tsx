@@ -935,7 +935,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             </div>
           </div>
 
-          <div className="md:col-span-2">
+          <div>
             <Label>Import manager *</Label>
             {managers.length === 1 ? (
               <Input value={managers[0].label} readOnly className="bg-muted/40" />
