@@ -30,7 +30,7 @@ function Page() {
         setErr(`Edycja możliwa tylko dla statusu draft / planned (obecny: ${d.status})`);
         setLoading(false); return;
       }
-      if (!isSuper && !(isImportMgr && d.import_manager_id === profile?.uzytkownik_id)) {
+      if (!isSuper && !isKierownik && !(isImportMgr && d.import_manager_id === profile?.uzytkownik_id)) {
         setErr("Brak uprawnień do edycji tej dostawy.");
         setLoading(false); return;
       }
