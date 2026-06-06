@@ -653,8 +653,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
 
   // ---------- Errors, totals, capacity ----------
   const lineErrors: FieldErrors[] = useMemo(
-    () => pozycje.map((p) => validatePosition(p, findStandard(p.produkt_id, p.opakowanie_id, p.kraj_id))),
-    [pozycje, standardy, kraje],
+    () => pozycje.map((p) => validatePosition(p)),
+    [pozycje],
   );
   const lineWarnings: string[][] = useMemo(
     () => pozycje.map((p) => calculatePositionLine(p, "notes", findStandard(p.produkt_id, p.opakowanie_id, p.kraj_id)).warnings),
