@@ -590,26 +590,11 @@ function Page() {
     return s;
   };
 
-  /** Apply patch + recalc chain when applicable (catalog mode with standard). */
-  const applyChainedPatch = (i: number, patch: Partial<PozycjaForm>) => {
+  /** Apply patch + one calculation pass for the whole position chain. */
+  const applyChainedPatch = (i: number, patch: Partial<PozycjaForm>, changedField: ChangedField) => {
     const merged: PozycjaForm = { ...pozycje[i], ...patch };
-    let finalPatch: Partial<PozycjaForm> = { ...patch };
-
-    if (merged.opakowanie_source === "catalog") {
-      const std = findStandard(merged.produkt_id, merged.opakowanie_id, merged.kraj_id);
-      if (std) {
-        const palety = Math.max(0, Number(merged.palety) || 0);
-        const calc = calcFromStandard(palety, std);
-        finalPatch = {
-          ...finalPatch,
-          ilosc_opakowan: calc.ilosc_opakowan || merged.ilosc_opakowan,
-          netto_kg: calc.netto_kg || merged.netto_kg,
-          brutto_kg: calc.brutto_kg || merged.brutto_kg,
-          weights_autofilled: true,
-        };
-      }
-    }
-    updateRow(i, finalPatch);
+    const std = findStandard(merged.produkt_id, merged.opakowanie_id, merged.kraj_id);
+    updateRow(i, calculatePositionLine(merged, changedField, std).next);
   };
 
   const onPickProdukt = (i: number, id: string, label: string) => {
@@ -617,11 +602,11 @@ function Page() {
     // Reset odmiana if it doesn't match new produkt
     const od = odmiany.find((x) => x.id === cur.odmiana_id);
     const odmiana_id = od && od.produkt_id !== id ? "" : cur.odmiana_id;
-    applyChainedPatch(i, { produkt_id: id, produkt_query: label, odmiana_id });
+    applyChainedPatch(i, { produkt_id: id, produkt_query: label, odmiana_id }, "produkt");
   };
 
   const onPickKrajPoch = (i: number, id: string, label: string) => {
-    applyChainedPatch(i, { kraj_id: id, kraj_query: label });
+    applyChainedPatch(i, { kraj_id: id, kraj_query: label }, "kraj");
   };
 
   const onPickOpakowanie = (i: number, id: string, label: string) => {
@@ -637,41 +622,27 @@ function Page() {
       patch.material_tary = opak.material_canonical;
       patch.material_autofilled = true;
     }
-    applyChainedPatch(i, patch);
+    applyChainedPatch(i, patch, "opakowanie");
   };
 
-  const onUseCustomOpakowanie = (i: number) => {
+  const onOpakowanieQuery = (i: number, raw: string) => {
+    const text = raw.trim();
     updateRow(i, {
-      opakowanie_source: "custom",
+      opakowanie_query: raw,
       opakowanie_id: "",
-      opakowanie_query: "",
-      material_autofilled: false,
-      weights_autofilled: false,
-    });
-  };
-
-  const onUseNoOpakowanie = (i: number) => {
-    updateRow(i, {
-      opakowanie_source: "none",
-      opakowanie_id: "",
-      opakowanie_query: "",
-      opakowanie_custom_text: "",
-      material_autofilled: false,
-      weights_autofilled: false,
-    });
-  };
-
-  const onBackToCatalog = (i: number) => {
-    updateRow(i, {
-      opakowanie_source: "catalog",
-      opakowanie_custom_text: "",
+      opakowanie_custom_text: text,
+      opakowanie_source: text ? "custom" : "none",
       material_autofilled: false,
       weights_autofilled: false,
     });
   };
 
   const onPaletyChange = (i: number, v: string) => {
-    applyChainedPatch(i, { palety: v });
+    applyChainedPatch(i, { palety: v }, "palety");
+  };
+
+  const onIloscOpakowanChange = (i: number, v: string) => {
+    applyChainedPatch(i, { ilosc_opakowan: v }, "ilosc_opakowan");
   };
 
   const onMaterialChange = (i: number, v: "karton" | "drewno" | "plastik") => {
