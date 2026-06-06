@@ -873,13 +873,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           <div>
             <Label>Manager importu *</Label>
             <Select value={managerId} onValueChange={setManagerId} disabled={isImportMgr && !isSuper}>
-              <SelectTrigger className={cn(submitTried && !managerId && "border-destructive")}>
+              <SelectTrigger className={cn(submitTried && !managerId && "border-destructive field-invalid-pulse")}>
                 <SelectValue placeholder="Wybierz" />
               </SelectTrigger>
               <SelectContent>
                 {managers.map((x) => <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            {submitTried && !managerId && <FieldErr msg="Manager importu wymagany" />}
           </div>
           <div className="md:col-span-2">
             <Label>Notatki</Label>
