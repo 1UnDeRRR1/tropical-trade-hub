@@ -1006,7 +1006,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                   <div className="md:col-span-2">
                     <Label>Opakowanie</Label>
                     <Combobox
-                      items={opakSorted}
+                      items={opakowania}
+                      initialItems={initialOpakItems}
                       value={p.opakowanie_id}
                       query={opakSelectedLabel}
                       onQuery={(s) => onOpakowanieQuery(i, s)}
@@ -1017,7 +1018,11 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       }}
                       placeholder={p.produkt_id ? "Wybierz z listy, wpisz własne albo zostaw puste" : "Najpierw wybierz produkt"}
                       minChars={2}
+                      maxItems={20}
                       showInitialItems={!!p.produkt_id}
+                      emptyInitialMessage={p.produkt_id && !sugg.hasAnyStandard
+                        ? "Brak standardów palet dla tego produktu — wpisz tekst, aby wyszukać opakowanie"
+                        : undefined}
                       invalid={showErrs && !!errs.opakowanie_custom_text}
                     />
                     {warnings.length > 0 && (
