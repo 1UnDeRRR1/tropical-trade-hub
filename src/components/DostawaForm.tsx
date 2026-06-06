@@ -682,12 +682,12 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   );
 
   const totals = useMemo(() => {
-    const palety = pozycje.reduce((s, p) => s + (Number(p.palety) || 0), 0);
-    const netto = pozycje.reduce((s, p) => s + (Number(p.netto_kg) || 0), 0);
-    const brutto = pozycje.reduce((s, p) => s + (Number(p.brutto_kg) || 0), 0);
+    const palety = pozycje.reduce((s, p) => s + (toNum(p.palety) ?? 0), 0);
+    const netto = pozycje.reduce((s, p) => s + (toNum(p.netto_kg) ?? 0), 0);
+    const brutto = pozycje.reduce((s, p) => s + (toNum(p.brutto_kg) ?? 0), 0);
     const byWal = new Map<string, number>();
     for (const p of pozycje) {
-      const val = (Number(p.netto_kg) || 0) * (Number(p.cena_zakupu) || 0);
+      const val = (toNum(p.netto_kg) ?? 0) * (toNum(p.cena_zakupu) ?? 0);
       byWal.set(p.waluta, (byWal.get(p.waluta) || 0) + val);
     }
     return { palety, netto, brutto, byWal };
