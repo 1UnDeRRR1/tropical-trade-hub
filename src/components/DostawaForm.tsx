@@ -650,10 +650,11 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     const errs: string[] = [];
     if (!dataZaladunku) errs.push("Data załadunku wymagana");
     if (!dataDostawy) errs.push("Data dostawy / przyjazdu wymagana");
-    if (!dostawcaId) errs.push("Dostawca wymagany");
+    if (!dostawcaId) errs.push(dostawcaQuery.trim() ? "Dostawca — wybierz z listy" : "Dostawca wymagany");
+    if (!krajId) errs.push(krajZaladunkuQuery.trim() ? "Kraj załadunku — wybierz z listy" : "Kraj załadunku wymagany");
     if (!managerId) errs.push("Manager importu wymagany");
     return errs;
-  }, [dataZaladunku, dataDostawy, dostawcaId, managerId]);
+  }, [dataZaladunku, dataDostawy, dostawcaId, dostawcaQuery, krajId, krajZaladunkuQuery, managerId]);
 
   const hasAnyError =
     headerErrors.length > 0 ||
@@ -916,7 +917,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <Label>Produkt * (wpisz min. 2 znaki — działają aliasy)</Label>
+                    <Label>Produkt *</Label>
                     <Combobox
                       items={produkty}
                       value={p.produkt_id}
@@ -935,7 +936,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                   </div>
 
                   <div>
-                    <Label>Kraj pochodzenia (wpisz min. 2 znaki — działają aliasy)</Label>
+                    <Label>Kraj pochodzenia *</Label>
                     <Combobox
                       items={kraje}
                       value={p.kraj_id}
