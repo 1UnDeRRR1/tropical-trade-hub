@@ -152,11 +152,23 @@ function calculatePositionLine(input: PozycjaForm, changedField: ChangedField, s
 }
 
 // ---------- Field validation ----------
+// Letters (incl. Polish), spaces, hyphen only — for combobox typed search text
+const LETTERS_RE = /^[A-Za-zÀ-ÖØ-öø-ÿĄąĆćĘęŁłŃńÓóŚśŹźŻż\s-]*$/;
+function lettersOnlyError(q: string): string | undefined {
+  return q && !LETTERS_RE.test(q) ? "Dozwolone są tylko litery" : undefined;
+}
+
 type FieldErrors = Partial<Record<keyof PozycjaForm | "opakowanie", string>>;
-function validatePosition(p: PozycjaForm, standard: StandardRow | null = null): FieldErrors {
+function validatePosition(p: PozycjaForm): FieldErrors {
   const e: FieldErrors = {};
-  if (!p.produkt_id) e.produkt_id = p.produkt_query.trim() ? "Wybierz produkt z listy" : "Produkt wymagany";
-  if (!p.kraj_id) e.kraj_id = p.kraj_query.trim() ? "Wybierz kraj z listy" : "Kraj pochodzenia wymagany";
+  if (!p.produkt_id) {
+    const le = lettersOnlyError(p.produkt_query);
+    e.produkt_id = le ?? (p.produkt_query.trim() ? "Wybierz produkt z listy" : "Produkt wymagany");
+  }
+  if (!p.kraj_id) {
+    const le = lettersOnlyError(p.kraj_query);
+    e.kraj_id = le ?? (p.kraj_query.trim() ? "Wybierz kraj z listy" : "Kraj pochodzenia wymagany");
+  }
   if (p.opakowanie_source === "custom") {
     const t = p.opakowanie_custom_text.trim();
     if (t.length > 200) e.opakowanie_custom_text = "Max 200 znaków";
@@ -167,37 +179,25 @@ function validatePosition(p: PozycjaForm, standard: StandardRow | null = null): 
   const netto = toNum(p.netto_kg);
   const brutto = toNum(p.brutto_kg);
   const cena = toNum(p.cena_zakupu);
-  if (isBlank(p.palety) || palety === null || palety < 0) e.palety = "Palety >= 0";
-  if (!isBlank(p.ilosc_opakowan) && (ilosc === null || ilosc < 0)) e.ilosc_opakowan = "Ilość opakowań >= 0";
+  if (isBlank(p.palety)) e.palety = "Liczba palet wymagana";
+  else if (palety === null) e.palety = "Dozwolone są tylko cyfry";
+  else if (palety <= 0) e.palety = "Liczba palet musi być większa niż 0";
+  if (isBlank(p.ilosc_opakowan)) e.ilosc_opakowan = "Ilość opakowań wymagana";
+  else if (ilosc === null) e.ilosc_opakowan = "Dozwolone są tylko cyfry";
+  else if (ilosc <= 0) e.ilosc_opakowan = "Ilość opakowań musi być większa niż 0";
   if (isBlank(p.netto_kg)) e.netto_kg = "Netto kg wymagane";
-  else if (netto === null || netto <= 0) e.netto_kg = "Netto kg musi być > 0";
+  else if (netto === null) e.netto_kg = "Dozwolone są tylko cyfry, przecinek lub kropka";
+  else if (netto <= 0) e.netto_kg = "Netto kg musi być większe niż 0";
   if (isBlank(p.brutto_kg)) e.brutto_kg = "Brutto kg wymagane";
-  else if (brutto === null || brutto <= 0) e.brutto_kg = "Brutto kg musi być > 0";
+  else if (brutto === null) e.brutto_kg = "Dozwolone są tylko cyfry, przecinek lub kropka";
+  else if (brutto <= 0) e.brutto_kg = "Brutto kg musi być większe niż 0";
   else if (netto !== null && brutto < netto) e.brutto_kg = "Brutto kg nie może być mniejsze niż netto kg";
-  if (isBlank(p.cena_zakupu)) e.cena_zakupu = "Cena zakupu wymagana";
-  else if (cena === null || cena < 0) e.cena_zakupu = "Cena zakupu >= 0";
+  if (isBlank(p.cena_zakupu)) e.cena_zakupu = "Cena zakupu za 1 kg wymagana";
+  else if (cena === null) e.cena_zakupu = "Dozwolone są tylko cyfry, przecinek lub kropka";
+  else if (cena <= 0) e.cena_zakupu = "Cena zakupu za 1 kg musi być większa niż 0";
   if (!["PLN","EUR","USD"].includes(p.waluta)) e.waluta = "PLN/EUR/USD";
-  if (p.opakowanie_source === "catalog" && standard) {
-    const bpp = standard.liczba_opakowan_na_palecie;
-    const npb = standard.waga_netto_opakowania_kg;
-    const gpb = standard.waga_brutto_opakowania_kg;
-    if (bpp !== null && npb !== null && gpb !== null && palety !== null) {
-      const expectedBoxes = palety * bpp;
-      const expectedNet = expectedBoxes * npb;
-      const expectedGross = expectedBoxes * gpb;
-      // Boxes: strict — only numeric float tolerance 0.01
-      if (ilosc === null || Math.abs(ilosc - expectedBoxes) > 0.01) {
-        e.ilosc_opakowan = `Wg standardu: ${fmtAmount(expectedBoxes, 0)} (palety × ${bpp})`;
-      }
-      // Netto / Brutto: rounding tolerance ±0.5 kg
-      if (netto !== null && Math.abs(netto - expectedNet) > 0.5) {
-        e.netto_kg = `Wg standardu: ${fmtAmount(expectedNet)} kg`;
-      }
-      if (brutto !== null && Math.abs(brutto - expectedGross) > 0.5) {
-        e.brutto_kg = `Wg standardu: ${fmtAmount(expectedGross)} kg`;
-      }
-    }
-  }
+  if ((p.notes ?? "").length > 100) e.notes = "Maksymalnie 100 znaków";
+  // standardy_palet are helper-only. Do NOT block save on mismatch.
   return e;
 }
 
