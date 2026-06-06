@@ -1199,13 +1199,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           <div>Razem palet: <strong>{totals.palety}</strong> / {MAX_PALETY}</div>
           <div>Razem netto (kg): <strong>{totals.netto.toFixed(2)}</strong></div>
           <div>Razem brutto (kg): <strong>{totals.brutto.toFixed(2)}</strong> / {MAX_BRUTTO_KG}</div>
-          {[...totals.byWal.entries()].map(([w, v]) => (
-            <div key={w}>Wartość ({w}): <strong>{v.toFixed(2)}</strong></div>
-          ))}
-          <p className="text-xs text-muted-foreground pt-2">
-            Koszt (auto/transport/FX) będzie liczony później na poziomie dostawy i pozycji
-            — po wdrożeniu modułów auta i transport.
-          </p>
+          <div>Razem wartość (€): <strong>{(totals.byWal.get("EUR") ?? 0).toFixed(2)}</strong></div>
+
           <div className="flex flex-col sm:flex-row gap-2 pt-4">
             <Button type="button" variant="outline" disabled={saving} onClick={() => submit("draft")}>
               {mode === "edit" ? "Zapisz zmiany (szkic)" : "Zapisz jako szkic"}
