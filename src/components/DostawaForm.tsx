@@ -1016,20 +1016,20 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="min-w-0">
               <Label>Data załadunku *</Label>
               <Input type="date" min={todayStr} value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
-                     className={cn("h-10 min-w-0 text-sm", submitTried && (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive", shouldPulse("data_zaladunku", submitTried && (!dataZaladunku || dataZaladunku < todayStr)) && "field-invalid-pulse")} />
+                     className={cn("h-10 w-full min-w-0 max-w-full block text-xs px-2", submitTried && (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive", shouldPulse("data_zaladunku", submitTried && (!dataZaladunku || dataZaladunku < todayStr)) && "field-invalid-pulse")} />
               {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
               {submitTried && dataZaladunku && dataZaladunku < todayStr && (
                 <FieldErr msg="Data załadunku nie może być wcześniejsza niż dzisiaj" />
               )}
             </div>
 
-            <div>
+            <div className="min-w-0">
               <Label>Data dostawy *</Label>
               <Input type="date" min={dataZaladunku || todayStr} value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
-                     className={cn("h-10 min-w-0 text-sm", submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive", shouldPulse("data_dostawy", !!(submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)))) && "field-invalid-pulse")} />
+                     className={cn("h-10 w-full min-w-0 max-w-full block text-xs px-2", submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive", shouldPulse("data_dostawy", !!(submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)))) && "field-invalid-pulse")} />
               {submitTried && !dataDostawy && <FieldErr msg="Data dostawy wymagana" />}
               {submitTried && dataDostawy && dataZaladunku && dataDostawy <= dataZaladunku && (
                 <FieldErr msg="Data dostawy musi być późniejsza niż data załadunku" />
