@@ -17,6 +17,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// ====================================================================
+// ANTI-REGRESSION FIELD CHECKLIST — do NOT remove fields silently.
+// Any removal requires explicit owner approval in the prompt.
+// Header (must be visible):
+//   Dostawca, Kraj załadunku, Data załadunku, Data dostawy, Import manager, Komentarz
+// Position (must be visible):
+//   Produkt, Kraj pochodzenia, Odmiana/Sort, Opakowanie, Materiał tary,
+//   Palety, Ilość opakowań, Netto, Brutto, Cena za 1 kg,
+//   Cena za opakowanie (derived display-only), Komentarz pozycji
+// BLOCKED — NOT in DB/RPC, do NOT fake in UI/notes/state:
+//   Marka, Kaliber, Klasa, Cena transportu za auto, Koszt własny 1 kg,
+//   Dodaj nową dostawę (multi-dostawa session)
+// ====================================================================
+
 // Vehicle capacity hard limits
 const MAX_PALETY = 26;
 const MAX_BRUTTO_KG = 21500;
