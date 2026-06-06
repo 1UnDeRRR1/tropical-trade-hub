@@ -952,7 +952,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             {submitTried && !managerId && <FieldErr msg="Import manager wymagany" />}
           </div>
 
-          <div className="md:col-span-2">
+          <div>
             <Label>Komentarz</Label>
             <Input value={notes} maxLength={100} onChange={(e) => setNotes(e.target.value)}
               className={cn(submitTried && (notes ?? "").length > 100 && "border-destructive field-invalid-pulse")} />
