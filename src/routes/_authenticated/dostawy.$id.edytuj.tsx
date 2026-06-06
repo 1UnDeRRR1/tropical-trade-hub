@@ -69,7 +69,7 @@ function Page() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [id, isSuper, isImportMgr, profile?.uzytkownik_id]);
+  }, [id, isSuper, isImportMgr, isKierownik, profile?.uzytkownik_id]);
 
   return (
     <RoleGuard path="/dostawy">
