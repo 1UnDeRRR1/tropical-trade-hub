@@ -680,15 +680,18 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     return errs;
   }, [totals]);
 
+  const todayStr = new Date().toISOString().slice(0,10);
   const headerErrors: string[] = useMemo(() => {
     const errs: string[] = [];
+    if (!dostawcaId) errs.push(dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany");
+    if (!krajId) errs.push(krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany");
     if (!dataZaladunku) errs.push("Data załadunku wymagana");
+    else if (dataZaladunku < todayStr) errs.push("Data załadunku nie może być wcześniejsza niż dzisiaj");
     if (!dataDostawy) errs.push("Data dostawy / przyjazdu wymagana");
-    if (!dostawcaId) errs.push(dostawcaQuery.trim() ? "Dostawca — wybierz z listy" : "Dostawca wymagany");
-    if (!krajId) errs.push(krajZaladunkuQuery.trim() ? "Kraj załadunku — wybierz z listy" : "Kraj załadunku wymagany");
+    else if (dataZaladunku && dataDostawy <= dataZaladunku) errs.push("Data dostawy musi być późniejsza niż data załadunku");
     if (!managerId) errs.push("Manager importu wymagany");
     return errs;
-  }, [dataZaladunku, dataDostawy, dostawcaId, dostawcaQuery, krajId, krajZaladunkuQuery, managerId]);
+  }, [dataZaladunku, dataDostawy, dostawcaId, dostawcaQuery, krajId, krajZaladunkuQuery, managerId, todayStr]);
 
   const hasAnyError =
     headerErrors.length > 0 ||
