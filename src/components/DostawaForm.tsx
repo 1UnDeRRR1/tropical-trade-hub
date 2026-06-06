@@ -770,7 +770,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     : null;
 
   return (
-    <div className="space-y-4 max-w-5xl">
+    <div key={shakeKey} className={cn("space-y-4 max-w-5xl", shakeKey > 0 && "form-shake")}>
       <div>
         <h1 className="text-2xl font-bold">
           {mode === "edit" ? `Edycja dostawy` : "Nowa dostawa"}
