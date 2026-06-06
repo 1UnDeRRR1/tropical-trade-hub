@@ -747,17 +747,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     [pozycje, standardy, kraje],
   );
 
-  const totals = useMemo(() => {
-    const palety = pozycje.reduce((s, p) => s + (toNum(p.palety) ?? 0), 0);
-    const netto = pozycje.reduce((s, p) => s + (toNum(p.netto_kg) ?? 0), 0);
-    const brutto = pozycje.reduce((s, p) => s + (toNum(p.brutto_kg) ?? 0), 0);
-    const byWal = new Map<string, number>();
-    for (const p of pozycje) {
-      const val = (toNum(p.netto_kg) ?? 0) * (toNum(p.cena_zakupu) ?? 0);
-      byWal.set(p.waluta, (byWal.get(p.waluta) || 0) + val);
-    }
-    return { palety, netto, brutto, byWal };
-  }, [pozycje]);
+  const totals = useMemo(() => calculateTotals(pozycje), [pozycje]);
 
   const capacityErrors: string[] = useMemo(() => {
     const errs: string[] = [];
@@ -786,14 +776,62 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     capacityErrors.length > 0 ||
     lineErrors.some((e) => Object.keys(e).length > 0);
 
+  const lineErrorLabels: Partial<Record<keyof PozycjaForm | "opakowanie", string>> = {
+    produkt_id: "Produkt",
+    kraj_id: "Kraj pochodzenia",
+    material_tary: "Materiał tary",
+    palety: "Palety",
+    ilosc_opakowan: "Ilość opakowań",
+    netto_kg: "Netto",
+    brutto_kg: "Brutto",
+    cena_zakupu: "Cena za 1 kg",
+    notes: "Komentarz pozycji",
+    opakowanie_custom_text: "Opakowanie",
+  };
+
+  const submitSummary = useMemo(() => [
+    ...headerErrors,
+    ...capacityErrors,
+    ...lineErrors.flatMap((errs, rowIndex) =>
+      Object.entries(errs).map(([field, msg]) =>
+        `Pozycja ${rowIndex + 1}: ${lineErrorLabels[field as keyof typeof lineErrorLabels] ?? field} — ${msg}`,
+      ),
+    ),
+    ...(submitError ? [submitError] : []),
+  ], [headerErrors, capacityErrors, lineErrors, submitError]);
+
+  const invalidFieldKeys = (freshLineErrors = lineErrors) => [
+    ...(!dostawcaId ? ["dostawca"] : []),
+    ...(!krajId ? ["kraj_zaladunku"] : []),
+    ...(!dataZaladunku || dataZaladunku < todayStr ? ["data_zaladunku"] : []),
+    ...(!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku) ? ["data_dostawy"] : []),
+    ...(!managerId ? ["manager"] : []),
+    ...((notes ?? "").length > 100 ? ["notes"] : []),
+    ...freshLineErrors.flatMap((errs, rowIndex) => Object.keys(errs).map((field) => `row_${rowIndex}_${field}`)),
+  ];
+
   // ---------- Submit ----------
   const submit = async (s: "draft" | "planned") => {
     setSubmitError(null);
     setSubmitTried(true);
     setStatus(s);
-    if (hasAnyError) {
+    const freshLineErrors = pozycje.map((p) => validatePosition(p));
+    const freshHeaderErrors: string[] = [];
+    if (!dostawcaId) freshHeaderErrors.push(dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany");
+    if (!krajId) freshHeaderErrors.push(krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany");
+    if (!dataZaladunku) freshHeaderErrors.push("Data załadunku wymagana");
+    else if (dataZaladunku < todayStr) freshHeaderErrors.push("Data załadunku nie może być wcześniejsza niż dzisiaj");
+    if (!dataDostawy) freshHeaderErrors.push("Data dostawy wymagana");
+    else if (dataZaladunku && dataDostawy <= dataZaladunku) freshHeaderErrors.push("Data dostawy musi być późniejsza niż data załadunku");
+    if (!managerId) freshHeaderErrors.push("Import manager wymagany");
+    if ((notes ?? "").length > 100) freshHeaderErrors.push("Komentarz: maksymalnie 100 znaków");
+    const freshTotals = calculateTotals(pozycje);
+    const freshCapacityErrors: string[] = [];
+    if (freshTotals.palety > MAX_PALETY) freshCapacityErrors.push(`Łączna liczba palet ${freshTotals.palety} przekracza limit auta (${MAX_PALETY}).`);
+    if (freshTotals.brutto > MAX_BRUTTO_KG) freshCapacityErrors.push(`Łączna waga brutto ${freshTotals.brutto.toFixed(2)} kg przekracza limit auta (${MAX_BRUTTO_KG} kg).`);
+    if (freshHeaderErrors.length > 0 || freshCapacityErrors.length > 0 || freshLineErrors.some((e) => Object.keys(e).length > 0)) {
       setSubmitError("Formularz zawiera błędy. Popraw zaznaczone pola.");
-      triggerShake();
+      triggerFailedSubmitFeedback(invalidFieldKeys(freshLineErrors));
       return;
     }
     setSaving(true);
@@ -824,7 +862,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     if (payload.some((r) => r.netto_kg == null || r.brutto_kg == null || r.cena_zakupu == null)) {
       setSaving(false);
       setSubmitError("Niepoprawne wartości liczbowe. Popraw zaznaczone pola.");
-      triggerShake();
+      triggerFailedSubmitFeedback(invalidFieldKeys(freshLineErrors));
       return;
     }
 
