@@ -913,24 +913,26 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             )}
           </div>
 
-          <div>
-            <Label>Data załadunku *</Label>
-            <Input type="date" min={todayStr} value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
-                   className={cn(submitTried && (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive field-invalid-pulse")} />
-            {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
-            {submitTried && dataZaladunku && dataZaladunku < todayStr && (
-              <FieldErr msg="Data załadunku nie może być wcześniejsza niż dzisiaj" />
-            )}
-          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Data załadunku *</Label>
+              <Input type="date" min={todayStr} value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
+                     className={cn(submitTried && (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive field-invalid-pulse")} />
+              {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
+              {submitTried && dataZaladunku && dataZaladunku < todayStr && (
+                <FieldErr msg="Data załadunku nie może być wcześniejsza niż dzisiaj" />
+              )}
+            </div>
 
-          <div>
-            <Label>Data dostawy *</Label>
-            <Input type="date" min={dataZaladunku || todayStr} value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
-                   className={cn(submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive field-invalid-pulse")} />
-            {submitTried && !dataDostawy && <FieldErr msg="Data dostawy wymagana" />}
-            {submitTried && dataDostawy && dataZaladunku && dataDostawy <= dataZaladunku && (
-              <FieldErr msg="Data dostawy musi być późniejsza niż data załadunku" />
-            )}
+            <div>
+              <Label>Data dostawy *</Label>
+              <Input type="date" min={dataZaladunku || todayStr} value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
+                     className={cn(submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive field-invalid-pulse")} />
+              {submitTried && !dataDostawy && <FieldErr msg="Data dostawy wymagana" />}
+              {submitTried && dataDostawy && dataZaladunku && dataDostawy <= dataZaladunku && (
+                <FieldErr msg="Data dostawy musi być późniejsza niż data załadunku" />
+              )}
+            </div>
           </div>
 
           <div className="md:col-span-2">
