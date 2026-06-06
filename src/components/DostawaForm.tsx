@@ -958,8 +958,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 }
               }}
               placeholder="Wpisz nazwę dostawcy"
-              invalid={submitTried && !dostawcaId}
-              invalidPulse={shouldPulse("dostawca", submitTried && !dostawcaId)}
+              invalid={!dostawcaId}
+              invalidPulse={shouldPulse("dostawca", !dostawcaId)}
             />
             {submitTried && !dostawcaId && (
               <FieldErr msg={dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany"} />
@@ -995,8 +995,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 }
               }}
               placeholder="Wpisz nazwę kraju"
-              invalid={submitTried && !krajId}
-              invalidPulse={shouldPulse("kraj_zaladunku", submitTried && !krajId)}
+              invalid={!krajId}
+              invalidPulse={shouldPulse("kraj_zaladunku", !krajId)}
             />
             {submitTried && !krajId && (
               <FieldErr msg={krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany"} />
@@ -1019,7 +1019,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             <div className="min-w-0">
               <Label>Data załadunku *</Label>
               <Input type="date" min={todayStr} value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
-                     className={cn("h-10 w-full min-w-0 max-w-full block text-xs px-2", submitTried && (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive", shouldPulse("data_zaladunku", submitTried && (!dataZaladunku || dataZaladunku < todayStr)) && "field-invalid-pulse")} />
+                     className={cn("h-10 w-full min-w-0 max-w-full block text-xs px-2", (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive", shouldPulse("data_zaladunku", !dataZaladunku || dataZaladunku < todayStr) && "field-invalid-pulse")} />
               {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
               {submitTried && dataZaladunku && dataZaladunku < todayStr && (
                 <FieldErr msg="Data załadunku nie może być wcześniejsza niż dzisiaj" />
@@ -1029,7 +1029,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             <div className="min-w-0">
               <Label>Data dostawy *</Label>
               <Input type="date" min={dataZaladunku || todayStr} value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
-                     className={cn("h-10 w-full min-w-0 max-w-full block text-xs px-2", submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive", shouldPulse("data_dostawy", !!(submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)))) && "field-invalid-pulse")} />
+                     className={cn("h-10 w-full min-w-0 max-w-full block text-xs px-2", (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive", shouldPulse("data_dostawy", !!(!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku))) && "field-invalid-pulse")} />
               {submitTried && !dataDostawy && <FieldErr msg="Data dostawy wymagana" />}
               {submitTried && dataDostawy && dataZaladunku && dataDostawy <= dataZaladunku && (
                 <FieldErr msg="Data dostawy musi być późniejsza niż data załadunku" />
@@ -1043,7 +1043,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
               <Input value={managers[0].label} readOnly className="bg-muted/40" />
             ) : (
               <Select value={managerId} onValueChange={setManagerId} disabled={isImportMgr && !isSuper}>
-                <SelectTrigger className={cn(submitTried && !managerId && "border-destructive", shouldPulse("manager", submitTried && !managerId) && "field-invalid-pulse")}>
+                <SelectTrigger className={cn(!managerId && "border-destructive", shouldPulse("manager", !managerId) && "field-invalid-pulse")}>
                   <SelectValue placeholder="Wybierz" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1152,8 +1152,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                           }
                         }}
                         placeholder="Np. cebula, ananas…"
-                        invalid={showErrs && !!errs.produkt_id}
-                        invalidPulse={shouldPulse(`row_${i}_produkt_id`, showErrs && !!errs.produkt_id)}
+                        invalid={!!errs.produkt_id}
+                        invalidPulse={shouldPulse(`row_${i}_produkt_id`, !!errs.produkt_id)}
                       />
                       {showErrs && <FieldErr msg={errs.produkt_id} />}
                     </div>
@@ -1175,8 +1175,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                           }
                         }}
                         placeholder="Np. Hiszpania, Maroko…"
-                        invalid={showErrs && !!errs.kraj_id}
-                        invalidPulse={shouldPulse(`row_${i}_kraj_id`, showErrs && !!errs.kraj_id)}
+                        invalid={!!errs.kraj_id}
+                        invalidPulse={shouldPulse(`row_${i}_kraj_id`, !!errs.kraj_id)}
                       />
                       {showErrs && <FieldErr msg={errs.kraj_id} />}
                     </div>
@@ -1234,7 +1234,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         <Button key={m} type="button" size="sm"
                           variant={p.material_tary === m ? "default" : "outline"}
                           onClick={() => onMaterialChange(i, m)}
-                          className={cn(showErrs && errs.material_tary && !p.material_tary && "border-destructive", shouldPulse(`row_${i}_material_tary`, showErrs && !!errs.material_tary && !p.material_tary) && "field-invalid-pulse")}>
+                          className={cn(!p.material_tary && "border-destructive", shouldPulse(`row_${i}_material_tary`, !p.material_tary) && "field-invalid-pulse")}>
                           {m === "karton" ? "Karton" : m === "drewno" ? "Drewno" : "Plastik"}
                         </Button>
                       ))}
@@ -1247,7 +1247,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Palety *</Label>
                       <Input type="text" inputMode="numeric" pattern="\d*" value={p.palety}
                         onChange={(e) => onPaletyChange(i, e.target.value)}
-                        className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive", shouldPulse(`row_${i}_palety`, showErrs && !!errs.palety) && "field-invalid-pulse")} />
+                        className={cn((errs.palety || totals.palety > MAX_PALETY) && "border-destructive", shouldPulse(`row_${i}_palety`, !!errs.palety) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.palety ?? (totals.palety > MAX_PALETY ? "Limit auta 26 palet" : undefined)} />}
                     </div>
 
@@ -1255,7 +1255,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Ilość opakowań *</Label>
                       <Input type="text" inputMode="numeric" pattern="\d*" value={p.ilosc_opakowan}
                         onChange={(e) => onIloscOpakowanChange(i, e.target.value)}
-                        className={cn(showErrs && errs.ilosc_opakowan && "border-destructive", shouldPulse(`row_${i}_ilosc_opakowan`, showErrs && !!errs.ilosc_opakowan) && "field-invalid-pulse")} />
+                        className={cn(errs.ilosc_opakowan && "border-destructive", shouldPulse(`row_${i}_ilosc_opakowan`, !!errs.ilosc_opakowan) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.ilosc_opakowan} />}
                     </div>
                   </div>
@@ -1265,7 +1265,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Netto (kg) *</Label>
                       <Input type="text" inputMode="decimal" value={p.netto_kg}
                         onChange={(e) => applyChainedPatch(i, { netto_kg: e.target.value }, "netto_kg")}
-                        className={cn(showErrs && errs.netto_kg && "border-destructive", shouldPulse(`row_${i}_netto_kg`, showErrs && !!errs.netto_kg) && "field-invalid-pulse")} />
+                        className={cn(errs.netto_kg && "border-destructive", shouldPulse(`row_${i}_netto_kg`, !!errs.netto_kg) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.netto_kg} />}
                     </div>
 
@@ -1273,7 +1273,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Brutto (kg) *</Label>
                       <Input type="text" inputMode="decimal" value={p.brutto_kg}
                         onChange={(e) => applyChainedPatch(i, { brutto_kg: e.target.value }, "brutto_kg")}
-                        className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive", shouldPulse(`row_${i}_brutto_kg`, showErrs && !!errs.brutto_kg) && "field-invalid-pulse")} />
+                        className={cn((errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive", shouldPulse(`row_${i}_brutto_kg`, !!errs.brutto_kg) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.brutto_kg ?? (totals.brutto > MAX_BRUTTO_KG ? "Limit auta 21500 kg" : undefined)} />}
                     </div>
                   </div>
@@ -1283,7 +1283,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Cena za 1 kg (€) *</Label>
                       <Input type="text" inputMode="decimal" value={p.cena_zakupu}
                         onChange={(e) => updateRow(i, { cena_zakupu: e.target.value })}
-                        className={cn(showErrs && errs.cena_zakupu && "border-destructive", shouldPulse(`row_${i}_cena_zakupu`, showErrs && !!errs.cena_zakupu) && "field-invalid-pulse")} />
+                        className={cn(errs.cena_zakupu && "border-destructive", shouldPulse(`row_${i}_cena_zakupu`, !!errs.cena_zakupu) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.cena_zakupu} />}
                     </div>
 
