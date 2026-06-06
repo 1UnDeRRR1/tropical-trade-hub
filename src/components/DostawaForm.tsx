@@ -1273,7 +1273,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Brutto (kg) *</Label>
                       <Input type="text" inputMode="decimal" value={p.brutto_kg}
                         onChange={(e) => applyChainedPatch(i, { brutto_kg: e.target.value }, "brutto_kg")}
-                        className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive", shouldPulse(`row_${i}_brutto_kg`, showErrs && !!errs.brutto_kg) && "field-invalid-pulse")} />
+                        className={cn((errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive", shouldPulse(`row_${i}_brutto_kg`, !!errs.brutto_kg) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.brutto_kg ?? (totals.brutto > MAX_BRUTTO_KG ? "Limit auta 21500 kg" : undefined)} />}
                     </div>
                   </div>
