@@ -847,10 +847,13 @@ export type Database = {
           id: string
           ilosc_opakowan: number | null
           kraj_id: string | null
+          material_tary: string
           netto_kg: number
           notes: string | null
           odmiana_id: string | null
-          opakowanie_id: string
+          opakowanie_custom_text: string | null
+          opakowanie_id: string | null
+          opakowanie_source: string
           palety: number
           position_id: string
           produkt_id: string
@@ -865,10 +868,13 @@ export type Database = {
           id?: string
           ilosc_opakowan?: number | null
           kraj_id?: string | null
+          material_tary: string
           netto_kg: number
           notes?: string | null
           odmiana_id?: string | null
-          opakowanie_id: string
+          opakowanie_custom_text?: string | null
+          opakowanie_id?: string | null
+          opakowanie_source?: string
           palety?: number
           position_id: string
           produkt_id: string
@@ -883,10 +889,13 @@ export type Database = {
           id?: string
           ilosc_opakowan?: number | null
           kraj_id?: string | null
+          material_tary?: string
           netto_kg?: number
           notes?: string | null
           odmiana_id?: string | null
-          opakowanie_id?: string
+          opakowanie_custom_text?: string | null
+          opakowanie_id?: string | null
+          opakowanie_source?: string
           palety?: number
           position_id?: string
           produkt_id?: string

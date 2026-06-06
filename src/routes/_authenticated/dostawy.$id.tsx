@@ -33,7 +33,10 @@ interface Pozycja {
   position_id: string;
   produkt_id: string;
   odmiana_id: string | null;
-  opakowanie_id: string;
+  opakowanie_id: string | null;
+  opakowanie_source: "catalog" | "custom";
+  opakowanie_custom_text: string | null;
+  material_tary: "karton" | "drewno" | "plastik";
   kraj_id: string | null;
   palety: number;
   ilosc_opakowan: number | null;
@@ -42,6 +45,19 @@ interface Pozycja {
   cena_zakupu: number;
   waluta: string;
   notes: string | null;
+}
+
+function materialLabel(m: string): string {
+  if (m === "karton") return "Karton";
+  if (m === "drewno") return "Drewno";
+  if (m === "plastik") return "Plastik";
+  return m;
+}
+
+function opakLabel(p: Pozycja, catalogMap: Map<string, string>): string {
+  if (p.opakowanie_source === "custom") return p.opakowanie_custom_text || "—";
+  if (p.opakowanie_id) return catalogMap.get(p.opakowanie_id) ?? p.opakowanie_id;
+  return "—";
 }
 
 interface PozycjaStatus {
@@ -159,7 +175,7 @@ function Page() {
           ? supabase
               .from("opakowania")
               .select("opakowanie_id, typ_opakowania_pl, wariant_opakowania_pl")
-              .in("opakowanie_id", [...new Set(list.map((p) => p.opakowanie_id))])
+              .in("opakowanie_id", [...new Set(list.map((p) => p.opakowanie_id).filter(Boolean) as string[])])
           : Promise.resolve({ data: [] }),
         list.length
           ? supabase
@@ -280,6 +296,7 @@ function Page() {
                         <TableHead>Produkt</TableHead>
                         <TableHead>Odmiana</TableHead>
                         <TableHead>Opakowanie</TableHead>
+                        <TableHead>Materiał tary</TableHead>
                         <TableHead>Kraj poch.</TableHead>
                         <TableHead className="text-right">Palety</TableHead>
                         <TableHead className="text-right">Netto kg</TableHead>
@@ -297,7 +314,13 @@ function Page() {
                             <TableCell className="font-mono text-xs">{p.position_id}</TableCell>
                             <TableCell>{labels.produkty.get(p.produkt_id) ?? p.produkt_id}</TableCell>
                             <TableCell>{p.odmiana_id ? (labels.odmiany.get(p.odmiana_id) ?? p.odmiana_id) : "—"}</TableCell>
-                            <TableCell>{labels.opakowania.get(p.opakowanie_id) ?? p.opakowanie_id}</TableCell>
+                            <TableCell>
+                              {opakLabel(p, labels.opakowania)}
+                              {p.opakowanie_source === "custom" && (
+                                <Badge variant="secondary" className="ml-2">własne</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>{materialLabel(p.material_tary)}</TableCell>
                             <TableCell>{p.kraj_id ? (labels.kraje.get(p.kraj_id) ?? p.kraj_id) : "—"}</TableCell>
                             <TableCell className="text-right">{p.palety}</TableCell>
                             <TableCell className="text-right">{Number(p.netto_kg).toFixed(2)}</TableCell>
@@ -323,7 +346,11 @@ function Page() {
                         <div className="text-xs text-muted-foreground">
                           {p.odmiana_id ? (labels.odmiany.get(p.odmiana_id) ?? p.odmiana_id) : "—"}
                           {" · "}
-                          {labels.opakowania.get(p.opakowanie_id) ?? p.opakowanie_id}
+                          {opakLabel(p, labels.opakowania)}
+                          {p.opakowanie_source === "custom" && " (własne)"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Materiał tary: <strong>{materialLabel(p.material_tary)}</strong>
                         </div>
                         <div className="text-xs text-muted-foreground">
                           Kraj poch.: {p.kraj_id ? (labels.kraje.get(p.kraj_id) ?? p.kraj_id) : "—"}
