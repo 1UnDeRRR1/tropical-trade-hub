@@ -225,11 +225,12 @@ interface ComboProps {
   extraTop?: React.ReactNode; showInitialItems?: boolean; maxItems?: number;
   filterFn?: (item: RefItem, query: string) => boolean;
   invalid?: boolean;
+  invalidPulse?: boolean;
   initialItems?: RefItem[];
   emptyInitialMessage?: string;
 }
 function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placeholder, minChars = 2,
-                   extraTop, showInitialItems = false, maxItems = 20, filterFn, invalid,
+                   extraTop, showInitialItems = false, maxItems = 20, filterFn, invalid, invalidPulse,
                    initialItems, emptyInitialMessage }: ComboProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -263,7 +264,10 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
     <div className="relative" ref={wrapRef}>
       <div className="flex gap-1">
         <Input value={query} placeholder={placeholder}
-          className={cn(invalid && "border-destructive focus-visible:ring-destructive")}
+          className={cn(
+            invalid && "border-destructive focus-visible:ring-destructive",
+            invalidPulse && "field-invalid-pulse",
+          )}
           aria-invalid={invalid || undefined}
           onFocus={() => setOpen(true)}
           onChange={(e) => { onQuery(e.target.value); setOpen(true); }}
