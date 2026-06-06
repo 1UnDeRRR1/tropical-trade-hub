@@ -321,8 +321,8 @@ function Page() {
                         <TableHead className="text-right">Netto kg</TableHead>
                         {canSeeFinance && <TableHead className="text-right">Cena</TableHead>}
                         {canSeeFinance && <TableHead>Waluta</TableHead>}
-                        <TableHead>Stock</TableHead>
-                        <TableHead>Settlement</TableHead>
+                        <TableHead>Status towaru</TableHead>
+                        <TableHead>Status rozliczenia</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -386,8 +386,8 @@ function Page() {
                           </div>
                         )}
                         <div className="flex flex-wrap gap-1 pt-1">
-                          <Badge variant="outline">stock: {st?.stock_status ?? "—"}</Badge>
-                          <Badge variant="outline">settlement: {st?.settlement_status ?? "—"}</Badge>
+                          <Badge variant="outline">Towar: {st?.stock_status ?? "—"}</Badge>
+                          <Badge variant="outline">Rozliczenie: {st?.settlement_status ?? "—"}</Badge>
                         </div>
                       </div>
                     );

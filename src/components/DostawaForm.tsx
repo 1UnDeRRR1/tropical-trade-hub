@@ -177,10 +177,25 @@ function validatePosition(p: PozycjaForm, standard: StandardRow | null = null): 
   if (isBlank(p.cena_zakupu)) e.cena_zakupu = "Cena zakupu wymagana";
   else if (cena === null || cena < 0) e.cena_zakupu = "Cena zakupu >= 0";
   if (!["PLN","EUR","USD"].includes(p.waluta)) e.waluta = "PLN/EUR/USD";
-  if (p.opakowanie_source === "catalog" && standard && standard.liczba_opakowan_na_palecie !== null) {
-    const expectedBoxes = palety !== null ? palety * standard.liczba_opakowan_na_palecie : null;
-    if (differsFromExpected(p.ilosc_opakowan, expectedBoxes)) {
-      e.ilosc_opakowan = `Standard wymaga ${fmtAmount(expectedBoxes ?? 0, 0)} opak. dla ${p.palety || 0} palet`;
+  if (p.opakowanie_source === "catalog" && standard) {
+    const bpp = standard.liczba_opakowan_na_palecie;
+    const npb = standard.waga_netto_opakowania_kg;
+    const gpb = standard.waga_brutto_opakowania_kg;
+    if (bpp !== null && npb !== null && gpb !== null && palety !== null) {
+      const expectedBoxes = palety * bpp;
+      const expectedNet = expectedBoxes * npb;
+      const expectedGross = expectedBoxes * gpb;
+      // Boxes: strict — only numeric float tolerance 0.01
+      if (ilosc === null || Math.abs(ilosc - expectedBoxes) > 0.01) {
+        e.ilosc_opakowan = `Wg standardu: ${fmtAmount(expectedBoxes, 0)} (palety × ${bpp})`;
+      }
+      // Netto / Brutto: rounding tolerance ±0.5 kg
+      if (netto !== null && Math.abs(netto - expectedNet) > 0.5) {
+        e.netto_kg = `Wg standardu: ${fmtAmount(expectedNet)} kg`;
+      }
+      if (brutto !== null && Math.abs(brutto - expectedGross) > 0.5) {
+        e.brutto_kg = `Wg standardu: ${fmtAmount(expectedGross)} kg`;
+      }
     }
   }
   return e;
@@ -196,9 +211,12 @@ interface ComboProps {
   extraTop?: React.ReactNode; showInitialItems?: boolean; maxItems?: number;
   filterFn?: (item: RefItem, query: string) => boolean;
   invalid?: boolean;
+  initialItems?: RefItem[];
+  emptyInitialMessage?: string;
 }
 function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placeholder, minChars = 2,
-                   extraTop, showInitialItems = false, maxItems = 50, filterFn, invalid }: ComboProps) {
+                   extraTop, showInitialItems = false, maxItems = 50, filterFn, invalid,
+                   initialItems, emptyInitialMessage }: ComboProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -208,11 +226,15 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+  const isInitial = query.trim().length < minChars;
   const filtered = useMemo(() => {
-    if (query.trim().length < minChars) return showInitialItems ? items.slice(0, maxItems) : [];
+    if (isInitial) {
+      if (!showInitialItems) return [];
+      return (initialItems ?? items).slice(0, maxItems);
+    }
     const fn = filterFn ?? ((it: RefItem, q: string) => startsWithWord(it.search ?? it.label, q));
     return items.filter((it) => fn(it, query)).slice(0, maxItems);
-  }, [items, query, minChars, showInitialItems, filterFn, maxItems]);
+  }, [items, initialItems, query, isInitial, showInitialItems, filterFn, maxItems]);
 
   return (
     <div className="relative" ref={wrapRef}>
@@ -232,8 +254,10 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
       {open && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-72 overflow-auto">
           {extraTop}
-          {query.trim().length < minChars && !showInitialItems ? (
+          {isInitial && !showInitialItems ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">Zacznij wpisywać…</div>
+          ) : isInitial && filtered.length === 0 && emptyInitialMessage ? (
+            <div className="px-3 py-2 text-xs text-muted-foreground">{emptyInitialMessage}</div>
           ) : filtered.length === 0 ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">Brak wyników</div>
           ) : (
@@ -552,17 +576,31 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     return matches[0];
   };
 
-  const suggestedOpakIds = (produkt_id: string, kraj_id: string): Set<string> => {
-    const s = new Set<string>();
-    if (!produkt_id) return s;
+  // Initial Opakowanie suggestions: based on Produkt + row Kraj pochodzenia (NOT Kraj załadunku).
+  // Exact ISO3 standards first, then generic (null iso3_kraju). Standards for other country-specific ISO3 excluded.
+  const suggestedOpakIdsOrdered = (produkt_id: string, kraj_id: string): { exact: string[]; generic: string[]; hasAnyStandard: boolean } => {
+    if (!produkt_id) return { exact: [], generic: [], hasAnyStandard: false };
     const iso3 = kraje.find((k) => k.id === kraj_id)?.iso3 ?? null;
+    const exact = new Set<string>();
+    const generic = new Set<string>();
+    let hasAnyStandard = false;
     for (const r of standardy) {
       if (r.produkt_id !== produkt_id) continue;
-      if (iso3 && r.iso3_kraju && r.iso3_kraju.toUpperCase() !== iso3.toUpperCase()) continue;
-      s.add(r.opakowanie_id);
+      hasAnyStandard = true;
+      const rIso = r.iso3_kraju ? r.iso3_kraju.toUpperCase() : null;
+      if (!iso3) {
+        // No country picked yet — show all standards for product
+        if (rIso) exact.add(r.opakowanie_id);
+        else generic.add(r.opakowanie_id);
+      } else {
+        if (rIso === iso3.toUpperCase()) exact.add(r.opakowanie_id);
+        else if (!rIso) generic.add(r.opakowanie_id);
+        // other country-specific standards excluded from initial list
+      }
     }
-    return s;
+    return { exact: [...exact], generic: [...generic].filter((id) => !exact.has(id)), hasAnyStandard };
   };
+
 
   const applyChainedPatch = (i: number, patch: Partial<PozycjaForm>, changedField: ChangedField) => {
     const merged: PozycjaForm = { ...pozycje[i], ...patch };
@@ -739,9 +777,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             </p>
           )
         )}
-        <p className="text-sm text-muted-foreground">
-          Każda pozycja otrzymuje własny, unikalny identyfikator wewnętrzny.
-        </p>
       </div>
 
       {submitTried && (headerErrors.length > 0 || capacityErrors.length > 0 || submitError) && (
@@ -760,12 +795,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           <div>
             <Label>Data załadunku *</Label>
             <Input type="date" value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
-                   className={cn(submitTried && !dataZaladunku && "border-destructive")} />
+                   className={cn(submitTried && !dataZaladunku && "border-destructive field-invalid-pulse")} />
+            {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
           </div>
           <div>
             <Label>Data dostawy / przyjazdu *</Label>
             <Input type="date" value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
-                   className={cn(submitTried && !dataDostawy && "border-destructive")} />
+                   className={cn(submitTried && !dataDostawy && "border-destructive field-invalid-pulse")} />
+            {submitTried && !dataDostawy && <FieldErr msg="Data dostawy / przyjazdu wymagana" />}
           </div>
           <div>
             <Label>Dostawca *</Label>
@@ -836,13 +873,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           <div>
             <Label>Manager importu *</Label>
             <Select value={managerId} onValueChange={setManagerId} disabled={isImportMgr && !isSuper}>
-              <SelectTrigger className={cn(submitTried && !managerId && "border-destructive")}>
+              <SelectTrigger className={cn(submitTried && !managerId && "border-destructive field-invalid-pulse")}>
                 <SelectValue placeholder="Wybierz" />
               </SelectTrigger>
               <SelectContent>
                 {managers.map((x) => <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            {submitTried && !managerId && <FieldErr msg="Manager importu wymagany" />}
           </div>
           <div className="md:col-span-2">
             <Label>Notatki</Label>
@@ -892,10 +930,13 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             const errs = lineErrors[i];
             const showErrs = true;
             const odmianyForProdukt = p.produkt_id ? odmiany.filter((o) => o.produkt_id === p.produkt_id) : [];
-            const suggested = suggestedOpakIds(p.produkt_id, p.kraj_id);
-            const opakSorted: OpakItem[] = p.produkt_id
-              ? [...opakowania.filter((o) => suggested.has(o.id)), ...opakowania.filter((o) => !suggested.has(o.id))]
-              : opakowania;
+            const sugg = suggestedOpakIdsOrdered(p.produkt_id, p.kraj_id);
+            const opakById = new Map(opakowania.map((o) => [o.id, o] as const));
+            // Initial list = ONLY standard-relevant options (exact ISO3 first, generic last). No full catalog dump.
+            const initialOpakItems: OpakItem[] = [
+              ...sugg.exact.map((id) => opakById.get(id)).filter(Boolean) as OpakItem[],
+              ...sugg.generic.map((id) => opakById.get(id)).filter(Boolean) as OpakItem[],
+            ];
             const opakSelectedLabel = p.opakowanie_query;
             const warnings = lineWarnings[i] ?? [];
             const produktLabel = p.produkt_query || (p.produkt_id ? produkty.find((x) => x.id === p.produkt_id)?.label ?? "" : "");
@@ -965,7 +1006,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                   <div className="md:col-span-2">
                     <Label>Opakowanie</Label>
                     <Combobox
-                      items={opakSorted}
+                      items={opakowania}
+                      initialItems={initialOpakItems}
                       value={p.opakowanie_id}
                       query={opakSelectedLabel}
                       onQuery={(s) => onOpakowanieQuery(i, s)}
@@ -976,7 +1018,11 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       }}
                       placeholder={p.produkt_id ? "Wybierz z listy, wpisz własne albo zostaw puste" : "Najpierw wybierz produkt"}
                       minChars={2}
+                      maxItems={20}
                       showInitialItems={!!p.produkt_id}
+                      emptyInitialMessage={p.produkt_id && !sugg.hasAnyStandard
+                        ? "Brak standardów palet dla tego produktu — wpisz tekst, aby wyszukać opakowanie"
+                        : undefined}
                       invalid={showErrs && !!errs.opakowanie_custom_text}
                     />
                     {warnings.length > 0 && (
