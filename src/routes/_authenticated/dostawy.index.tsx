@@ -169,7 +169,7 @@ function Page() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Numer</TableHead>
-                    <TableHead>Data</TableHead>
+                    <TableHead>Daty</TableHead>
                     <TableHead>Dostawca</TableHead>
                     <TableHead>Kraj</TableHead>
                     <TableHead>Manager importu</TableHead>
@@ -189,7 +189,12 @@ function Page() {
                           {r.numer_dostawy}
                         </Link>
                       </TableCell>
-                      <TableCell>{r.data_dostawy}</TableCell>
+                      <TableCell>
+                        <div className="text-xs leading-tight">
+                          <div>Załad.: {r.data_zaladunku}</div>
+                          <div className="text-muted-foreground">Dost.: {r.data_dostawy}</div>
+                        </div>
+                      </TableCell>
                       <TableCell>{r.dostawca_nazwa}</TableCell>
                       <TableCell>{r.kraj_nazwa ?? "—"}</TableCell>
                       <TableCell>{r.manager_nazwa}</TableCell>
@@ -220,7 +225,7 @@ function Page() {
                       </div>
                       <div className="text-sm font-medium">{r.dostawca_nazwa}</div>
                       <div className="text-xs text-muted-foreground">
-                        {r.data_dostawy} · {r.kraj_nazwa ?? "—"} · {r.pozycji} poz.
+                        Załad.: {r.data_zaladunku} · Dost.: {r.data_dostawy} · {r.kraj_nazwa ?? "—"} · {r.pozycji} poz.
                       </div>
                       <div className="text-xs text-muted-foreground">{r.manager_nazwa}</div>
                     </CardContent>
