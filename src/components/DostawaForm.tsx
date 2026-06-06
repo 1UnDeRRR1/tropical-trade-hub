@@ -1152,8 +1152,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                           }
                         }}
                         placeholder="Np. cebula, ananas…"
-                        invalid={showErrs && !!errs.produkt_id}
-                        invalidPulse={shouldPulse(`row_${i}_produkt_id`, showErrs && !!errs.produkt_id)}
+                        invalid={!!errs.produkt_id}
+                        invalidPulse={shouldPulse(`row_${i}_produkt_id`, !!errs.produkt_id)}
                       />
                       {showErrs && <FieldErr msg={errs.produkt_id} />}
                     </div>
