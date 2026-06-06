@@ -184,7 +184,10 @@ function Page() {
         : d.kraj_id || "";
       const mgrLabel = mRef.data
         ? ((mRef.data as { imie_nazwisko: string | null }).imie_nazwisko || d.import_manager_id)
-        : d.import_manager_id;
+        : !isSuper && isImportMgr && profile?.uzytkownik_id === d.import_manager_id && profile?.imie_nazwisko
+          ? profile.imie_nazwisko
+          : d.import_manager_id;
+
 
       const produktyMap = new Map<string, string>();
       ((prodRef.data ?? []) as Array<{ produkt_id: string; nazwa_pl: string | null }>).forEach((x) =>
