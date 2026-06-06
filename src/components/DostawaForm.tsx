@@ -1234,7 +1234,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         <Button key={m} type="button" size="sm"
                           variant={p.material_tary === m ? "default" : "outline"}
                           onClick={() => onMaterialChange(i, m)}
-                          className={cn(showErrs && errs.material_tary && !p.material_tary && "border-destructive", shouldPulse(`row_${i}_material_tary`, showErrs && !!errs.material_tary && !p.material_tary) && "field-invalid-pulse")}>
+                          className={cn(!p.material_tary && "border-destructive", shouldPulse(`row_${i}_material_tary`, !p.material_tary) && "field-invalid-pulse")}>
                           {m === "karton" ? "Karton" : m === "drewno" ? "Drewno" : "Plastik"}
                         </Button>
                       ))}
