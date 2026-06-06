@@ -88,11 +88,15 @@ function Page() {
           .from("opakowania")
           .select("opakowanie_id, typ_opakowania_pl, wariant_opakowania_pl")
           .order("typ_opakowania_pl"),
-        supabase
-          .from("uzytkownicy")
-          .select("uzytkownik_id, imie_nazwisko, klucz_roli, status")
-          .eq("klucz_roli", "import_manager")
-          .eq("status", "aktywny"),
+        // Only Superadministrator needs the list of import managers.
+        // Import manager creates only own deliveries — use my_profile().
+        isSuper
+          ? supabase
+              .from("uzytkownicy")
+              .select("uzytkownik_id, imie_nazwisko, klucz_roli, status")
+              .eq("klucz_roli", "import_manager")
+              .eq("status", "aktywny")
+          : Promise.resolve({ data: [] as Array<{ uzytkownik_id: string; imie_nazwisko: string | null }> }),
       ]);
       setDostawcy(
         (d.data ?? []).map((x) => ({
@@ -116,11 +120,20 @@ function Page() {
           label: [x.typ_opakowania_pl, x.wariant_opakowania_pl].filter(Boolean).join(" / ") || x.opakowanie_id,
         })),
       );
-      setManagers(
-        (u.data ?? []).map((x) => ({ id: x.uzytkownik_id, label: x.imie_nazwisko || x.uzytkownik_id })),
-      );
+      if (isSuper) {
+        setManagers(
+          (u.data ?? []).map((x) => ({ id: x.uzytkownik_id, label: x.imie_nazwisko || x.uzytkownik_id })),
+        );
+      } else if (isImportMgr && profile?.uzytkownik_id) {
+        setManagers([
+          { id: profile.uzytkownik_id, label: profile.imie_nazwisko || profile.uzytkownik_id },
+        ]);
+      } else {
+        setManagers([]);
+      }
     })();
-  }, []);
+  }, [isSuper, isImportMgr, profile?.uzytkownik_id, profile?.imie_nazwisko]);
+
 
   useEffect(() => {
     if (!managerId && isImportMgr && profile?.uzytkownik_id) {
