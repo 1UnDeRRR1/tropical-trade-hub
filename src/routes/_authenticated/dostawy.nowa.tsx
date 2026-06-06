@@ -608,7 +608,21 @@ function Page() {
     // Reset odmiana if it doesn't match new produkt
     const od = odmiany.find((x) => x.id === cur.odmiana_id);
     const odmiana_id = od && od.produkt_id !== id ? "" : cur.odmiana_id;
-    applyChainedPatch(i, { produkt_id: id, produkt_query: label, odmiana_id }, "produkt");
+    applyChainedPatch(
+      i,
+      {
+        produkt_id: id,
+        produkt_query: label,
+        odmiana_id,
+        opakowanie_source: "none",
+        opakowanie_id: "",
+        opakowanie_query: "",
+        opakowanie_custom_text: "",
+        material_autofilled: false,
+        weights_autofilled: false,
+      },
+      "produkt",
+    );
   };
 
   const onPickKrajPoch = (i: number, id: string, label: string) => {
