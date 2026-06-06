@@ -981,87 +981,31 @@ function Page() {
                       )}
                     </div>
 
-                    {/* 4. Opakowanie (optional) — catalog / custom / none */}
+                    {/* 4. Opakowanie — one adaptive business input */}
                     <div className="md:col-span-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <Label>Opakowanie</Label>
-                        <div className="flex gap-1 text-xs">
-                          <button
-                            type="button"
-                            onClick={() => onBackToCatalog(i)}
-                            className={cn(
-                              "px-2 py-0.5 rounded border",
-                              p.opakowanie_source === "catalog" ? "bg-accent" : "hover:bg-accent",
-                            )}
-                          >
-                            Z katalogu
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onUseCustomOpakowanie(i)}
-                            className={cn(
-                              "px-2 py-0.5 rounded border",
-                              p.opakowanie_source === "custom" ? "bg-accent" : "hover:bg-accent",
-                            )}
-                          >
-                            Własne
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onUseNoOpakowanie(i)}
-                            className={cn(
-                              "px-2 py-0.5 rounded border",
-                              p.opakowanie_source === "none" ? "bg-accent" : "hover:bg-accent",
-                            )}
-                          >
-                            Brak
-                          </button>
-                        </div>
-                      </div>
-                      {p.opakowanie_source === "custom" && (
-                        <Input
-                          placeholder="Wpisz nazwę własnego opakowania (max 200 znaków)"
-                          maxLength={200}
-                          value={p.opakowanie_custom_text}
-                          onChange={(e) => updateRow(i, { opakowanie_custom_text: e.target.value })}
-                          className={cn(showErrs && errs.opakowanie_custom_text && "border-destructive")}
-                        />
-                      )}
-                      {p.opakowanie_source === "catalog" && (
-                        <>
-                          <Combobox
-                            items={opakSorted}
-                            value={p.opakowanie_id}
-                            query={opakSelectedLabel}
-                            onQuery={(s) => updateRow(i, { opakowanie_query: s, opakowanie_id: "" })}
-                            onPick={(id, label) => onPickOpakowanie(i, id, label)}
-                            placeholder={p.produkt_id ? "Wyszukaj opakowanie…" : "Wybierz produkt lub wpisz min. 2 znaki"}
-                            minChars={2}
-                            invalid={showErrs && !!errs.opakowanie}
-                            extraTop={
-                              <button
-                                type="button"
-                                className="block w-full text-left px-3 py-2 text-sm bg-accent/40 hover:bg-accent border-b font-medium"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  onUseCustomOpakowanie(i);
-                                }}
-                              >
-                                ➕ Wpisz własne opakowanie
-                              </button>
-                            }
-                          />
-                          {p.produkt_id && suggested.size > 0 && (
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Pokazujemy najpierw opakowania znane dla tego produktu ({suggested.size}).
-                            </p>
-                          )}
-                        </>
-                      )}
-                      {p.opakowanie_source === "none" && (
-                        <p className="text-xs text-muted-foreground py-1">
-                          Bez opakowania. Wprowadź ręcznie palety, wagi i materiał tary.
+                      <Label>Opakowanie</Label>
+                      <Combobox
+                        items={opakSorted}
+                        value={p.opakowanie_id}
+                        query={opakSelectedLabel}
+                        onQuery={(s) => onOpakowanieQuery(i, s)}
+                        onPick={(id, label) => onPickOpakowanie(i, id, label)}
+                        onBlurInput={() => {
+                          const text = p.opakowanie_query.trim();
+                          if (!p.opakowanie_id && text !== p.opakowanie_custom_text) onOpakowanieQuery(i, text);
+                        }}
+                        placeholder={p.produkt_id ? "Wybierz z listy, wpisz własne albo zostaw puste" : "Najpierw wybierz produkt"}
+                        minChars={2}
+                        showInitialItems={!!p.produkt_id}
+                        invalid={showErrs && !!errs.opakowanie_custom_text}
+                      />
+                      {p.produkt_id && suggested.size > 0 && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Najpierw widoczne są opakowania znane dla tego produktu ({suggested.size}).
                         </p>
+                      )}
+                      {p.opakowanie_source === "custom" && p.opakowanie_custom_text && (
+                        <p className="mt-1 text-xs text-muted-foreground">Własne opakowanie — wagi wpisz ręcznie.</p>
                       )}
                       {showErrs && <FieldErr msg={errs.opakowanie ?? errs.opakowanie_custom_text} />}
                     </div>
