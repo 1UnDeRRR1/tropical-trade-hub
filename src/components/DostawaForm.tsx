@@ -347,7 +347,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const [krajAliases, setKrajAliases] = useState<Map<string, Set<string>>>(new Map());
   const [dostawcaAliases, setDostawcaAliases] = useState<Map<string, Set<string>>>(new Map());
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = localTodayStr();
   const [dataZaladunku, setDataZaladunku] = useState(existing?.data_zaladunku ?? today);
   const [dataDostawy, setDataDostawy] = useState(existing?.data_dostawy ?? today);
   const [dostawcaId, setDostawcaId] = useState(existing?.dostawca_id ?? "");
