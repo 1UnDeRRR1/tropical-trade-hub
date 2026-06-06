@@ -294,7 +294,7 @@ function Page() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>position_id</TableHead>
+                        <TableHead className="w-10">#</TableHead>
                         <TableHead>Produkt</TableHead>
                         <TableHead>Odmiana</TableHead>
                         <TableHead>Opakowanie</TableHead>
@@ -309,11 +309,11 @@ function Page() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pozycje.map((p) => {
+                      {pozycje.map((p, idx) => {
                         const st = statuses.get(p.position_id);
                         return (
                           <TableRow key={p.id}>
-                            <TableCell className="font-mono text-xs">{p.position_id}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
                             <TableCell>{labels.produkty.get(p.produkt_id) ?? p.produkt_id}</TableCell>
                             <TableCell>{p.odmiana_id ? (labels.odmiany.get(p.odmiana_id) ?? p.odmiana_id) : "—"}</TableCell>
                             <TableCell>
