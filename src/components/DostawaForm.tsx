@@ -958,8 +958,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 }
               }}
               placeholder="Wpisz nazwę dostawcy"
-              invalid={submitTried && !dostawcaId}
-              invalidPulse={shouldPulse("dostawca", submitTried && !dostawcaId)}
+              invalid={!dostawcaId}
+              invalidPulse={shouldPulse("dostawca", !dostawcaId)}
             />
             {submitTried && !dostawcaId && (
               <FieldErr msg={dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany"} />
