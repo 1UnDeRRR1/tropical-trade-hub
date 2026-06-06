@@ -789,17 +789,12 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         <h1 className="text-2xl font-bold">
           {mode === "edit" ? `Edycja dostawy` : "Nowa dostawa"}
         </h1>
-        {mode === "edit" && existing && (
-          /^[A-Z0-9]+\/[0-9]{3}\/[A-Z]{3}\/[0-9]{3}$/.test(existing.numer_dostawy) ? (
-            <p className="text-xs text-muted-foreground">
-              Numer dostawy: <span className="font-mono">{existing.numer_dostawy}</span>
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Wewnętrzny numer systemowy / legacy: <span className="font-mono">{existing.numer_dostawy}</span>
-            </p>
-          )
+        {mode === "edit" && existing && /^[A-Z0-9]+\/[0-9]{3}\/[A-Z]{3}\/[0-9]{3}$/.test(existing.numer_dostawy) && (
+          <p className="text-xs text-muted-foreground">
+            Numer dostawy: <span className="font-mono">{existing.numer_dostawy}</span>
+          </p>
         )}
+
       </div>
 
       {submitTried && (headerErrors.length > 0 || capacityErrors.length > 0 || submitError) && (
