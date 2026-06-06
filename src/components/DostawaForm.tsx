@@ -908,40 +908,40 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           </div>
 
           <div>
-            <Label>Data dostawy / przyjazdu *</Label>
+            <Label>Data dostawy *</Label>
             <Input type="date" min={dataZaladunku || todayStr} value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
                    className={cn(submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive field-invalid-pulse")} />
-            {submitTried && !dataDostawy && <FieldErr msg="Data dostawy / przyjazdu wymagana" />}
+            {submitTried && !dataDostawy && <FieldErr msg="Data dostawy wymagana" />}
             {submitTried && dataDostawy && dataZaladunku && dataDostawy <= dataZaladunku && (
               <FieldErr msg="Data dostawy musi być późniejsza niż data załadunku" />
             )}
           </div>
 
           <div>
-            <Label>Szacunkowy koszt transportu za auto (€)</Label>
-            <Input type="number" disabled placeholder="—" />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Pole oczekuje na wdrożenie zaplecza (DB/RPC). Tymczasowo niedostępne.
-            </p>
-          </div>
-
-          <div>
-            <Label>Manager importu *</Label>
-            <Select value={managerId} onValueChange={setManagerId} disabled={isImportMgr && !isSuper}>
-              <SelectTrigger className={cn(submitTried && !managerId && "border-destructive field-invalid-pulse")}>
-                <SelectValue placeholder="Wybierz" />
-              </SelectTrigger>
-              <SelectContent>
-                {managers.map((x) => <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {submitTried && !managerId && <FieldErr msg="Manager importu wymagany" />}
+            <Label>Import manager *</Label>
+            {managers.length === 1 ? (
+              <Input value={managers[0].label} readOnly className="bg-muted/40" />
+            ) : (
+              <Select value={managerId} onValueChange={setManagerId} disabled={isImportMgr && !isSuper}>
+                <SelectTrigger className={cn(submitTried && !managerId && "border-destructive field-invalid-pulse")}>
+                  <SelectValue placeholder="Wybierz" />
+                </SelectTrigger>
+                <SelectContent>
+                  {managers.map((x) => <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+            {submitTried && !managerId && <FieldErr msg="Import manager wymagany" />}
           </div>
 
           <div className="md:col-span-2">
-            <Label>Notatki dostawy</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+            <Label>Komentarz</Label>
+            <Input value={notes} maxLength={100} onChange={(e) => setNotes(e.target.value)}
+              className={cn(submitTried && (notes ?? "").length > 100 && "border-destructive field-invalid-pulse")} />
+            <p className="mt-1 text-xs text-muted-foreground">{(notes ?? "").length}/100</p>
+            {submitTried && (notes ?? "").length > 100 && <FieldErr msg="Maksymalnie 100 znaków" />}
           </div>
+
         </CardContent>
       </Card>
 
