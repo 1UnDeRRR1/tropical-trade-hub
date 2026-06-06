@@ -1066,9 +1066,9 @@ function Page() {
                         step="1"
                         value={p.palety}
                         onChange={(e) => onPaletyChange(i, e.target.value)}
-                        className={cn(showErrs && errs.palety && "border-destructive")}
+                        className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive")}
                       />
-                      {showErrs && <FieldErr msg={errs.palety} />}
+                      {showErrs && <FieldErr msg={errs.palety ?? (totals.palety > MAX_PALETY ? "Przekroczono limit auta 26 palet" : undefined)} />}
                     </div>
 
                     {/* 7. Ilość opakowań */}
