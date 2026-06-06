@@ -710,6 +710,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     setStatus(s);
     if (hasAnyError) {
       setSubmitError("Formularz zawiera błędy. Popraw zaznaczone pola.");
+      triggerShake();
       return;
     }
     setSaving(true);
