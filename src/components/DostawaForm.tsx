@@ -697,7 +697,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     return errs;
   }, [totals]);
 
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = localTodayStr();
   const headerErrors: string[] = useMemo(() => {
     const errs: string[] = [];
     if (!dostawcaId) errs.push(dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany");
