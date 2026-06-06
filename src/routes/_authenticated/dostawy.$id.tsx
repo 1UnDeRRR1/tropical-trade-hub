@@ -321,8 +321,8 @@ function Page() {
                         <TableHead className="text-right">Netto kg</TableHead>
                         {canSeeFinance && <TableHead className="text-right">Cena</TableHead>}
                         {canSeeFinance && <TableHead>Waluta</TableHead>}
-                        <TableHead>Stock</TableHead>
-                        <TableHead>Settlement</TableHead>
+                        <TableHead>Status towaru</TableHead>
+                        <TableHead>Status rozliczenia</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
