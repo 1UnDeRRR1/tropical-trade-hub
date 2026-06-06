@@ -1283,7 +1283,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Cena za 1 kg (€) *</Label>
                       <Input type="text" inputMode="decimal" value={p.cena_zakupu}
                         onChange={(e) => updateRow(i, { cena_zakupu: e.target.value })}
-                        className={cn(showErrs && errs.cena_zakupu && "border-destructive", shouldPulse(`row_${i}_cena_zakupu`, showErrs && !!errs.cena_zakupu) && "field-invalid-pulse")} />
+                        className={cn(errs.cena_zakupu && "border-destructive", shouldPulse(`row_${i}_cena_zakupu`, !!errs.cena_zakupu) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.cena_zakupu} />}
                     </div>
 
