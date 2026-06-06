@@ -930,10 +930,13 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             const errs = lineErrors[i];
             const showErrs = true;
             const odmianyForProdukt = p.produkt_id ? odmiany.filter((o) => o.produkt_id === p.produkt_id) : [];
-            const suggested = suggestedOpakIds(p.produkt_id, p.kraj_id);
-            const opakSorted: OpakItem[] = p.produkt_id
-              ? [...opakowania.filter((o) => suggested.has(o.id)), ...opakowania.filter((o) => !suggested.has(o.id))]
-              : opakowania;
+            const sugg = suggestedOpakIdsOrdered(p.produkt_id, p.kraj_id);
+            const opakById = new Map(opakowania.map((o) => [o.id, o] as const));
+            // Initial list = ONLY standard-relevant options (exact ISO3 first, generic last). No full catalog dump.
+            const initialOpakItems: OpakItem[] = [
+              ...sugg.exact.map((id) => opakById.get(id)).filter(Boolean) as OpakItem[],
+              ...sugg.generic.map((id) => opakById.get(id)).filter(Boolean) as OpakItem[],
+            ];
             const opakSelectedLabel = p.opakowanie_query;
             const warnings = lineWarnings[i] ?? [];
             const produktLabel = p.produkt_query || (p.produkt_id ? produkty.find((x) => x.id === p.produkt_id)?.label ?? "" : "");
