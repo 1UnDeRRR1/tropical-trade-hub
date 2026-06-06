@@ -983,14 +983,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       showInitialItems={!!p.produkt_id}
                       invalid={showErrs && !!errs.opakowanie_custom_text}
                     />
-                    {p.produkt_id && suggested.size > 0 && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Najpierw widoczne są opakowania znane dla tego produktu ({suggested.size}).
-                      </p>
-                    )}
-                    {p.opakowanie_source === "custom" && p.opakowanie_custom_text && (
-                      <p className="mt-1 text-xs text-muted-foreground">Własne opakowanie — wagi wpisz ręcznie.</p>
-                    )}
                     {warnings.length > 0 && (
                       <p className="mt-1 text-xs text-muted-foreground">{warnings[0]}</p>
                     )}
