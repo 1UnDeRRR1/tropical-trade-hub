@@ -811,7 +811,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
       <Card>
         <CardHeader><CardTitle>Dane dostawy</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+          <div className="md:col-span-2">
             <Label>Dostawca *</Label>
             <Combobox
               items={dostawcy}
@@ -851,7 +851,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             )}
           </div>
 
-          <div>
+          <div className="md:col-span-2">
             <Label>Kraj załadunku *</Label>
             <Combobox
               items={kraje}
@@ -918,7 +918,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             )}
           </div>
 
-          <div>
+          <div className="md:col-span-2">
             <Label>Import manager *</Label>
             {managers.length === 1 ? (
               <Input value={managers[0].label} readOnly className="bg-muted/40" />
