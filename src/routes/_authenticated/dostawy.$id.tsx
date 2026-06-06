@@ -278,7 +278,7 @@ function Page() {
               <div className="flex items-center gap-2">
                 <StatusBadge status={dostawa.status} />
                 {(dostawa.status === "draft" || dostawa.status === "planned") &&
-                  (isSuper || (isImportMgr && profile?.uzytkownik_id === dostawa.import_manager_id)) && (
+                  (isSuper || isKierownik || (isImportMgr && profile?.uzytkownik_id === dostawa.import_manager_id)) && (
                   <Button asChild size="sm">
                     <Link to="/dostawy/$id/edytuj" params={{ id: dostawa.id }}>Edytuj</Link>
                   </Button>
