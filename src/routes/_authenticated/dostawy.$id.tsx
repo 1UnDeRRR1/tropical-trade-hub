@@ -264,10 +264,15 @@ function Page() {
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
                 <h1 className="text-2xl font-bold">Dostawa</h1>
-                <p className="text-xs text-muted-foreground">
-                  Wewnętrzny numer systemowy: <span className="font-mono">{dostawa.numer_dostawy}</span>
-                  {" "}— nie jest to finalny numer biznesowy.
-                </p>
+                {/^[A-Z0-9]+\/[0-9]{3}\/[A-Z]{3}\/[0-9]{3}$/.test(dostawa.numer_dostawy) ? (
+                  <p className="text-xs text-muted-foreground">
+                    Numer dostawy: <span className="font-mono">{dostawa.numer_dostawy}</span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Wewnętrzny numer systemowy / legacy: <span className="font-mono">{dostawa.numer_dostawy}</span>
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge status={dostawa.status} />
