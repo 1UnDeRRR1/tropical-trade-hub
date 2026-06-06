@@ -211,9 +211,12 @@ interface ComboProps {
   extraTop?: React.ReactNode; showInitialItems?: boolean; maxItems?: number;
   filterFn?: (item: RefItem, query: string) => boolean;
   invalid?: boolean;
+  initialItems?: RefItem[];
+  emptyInitialMessage?: string;
 }
 function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placeholder, minChars = 2,
-                   extraTop, showInitialItems = false, maxItems = 50, filterFn, invalid }: ComboProps) {
+                   extraTop, showInitialItems = false, maxItems = 50, filterFn, invalid,
+                   initialItems, emptyInitialMessage }: ComboProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -223,11 +226,15 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+  const isInitial = query.trim().length < minChars;
   const filtered = useMemo(() => {
-    if (query.trim().length < minChars) return showInitialItems ? items.slice(0, maxItems) : [];
+    if (isInitial) {
+      if (!showInitialItems) return [];
+      return (initialItems ?? items).slice(0, maxItems);
+    }
     const fn = filterFn ?? ((it: RefItem, q: string) => startsWithWord(it.search ?? it.label, q));
     return items.filter((it) => fn(it, query)).slice(0, maxItems);
-  }, [items, query, minChars, showInitialItems, filterFn, maxItems]);
+  }, [items, initialItems, query, isInitial, showInitialItems, filterFn, maxItems]);
 
   return (
     <div className="relative" ref={wrapRef}>
@@ -247,8 +254,10 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
       {open && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-72 overflow-auto">
           {extraTop}
-          {query.trim().length < minChars && !showInitialItems ? (
+          {isInitial && !showInitialItems ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">Zacznij wpisywać…</div>
+          ) : isInitial && filtered.length === 0 && emptyInitialMessage ? (
+            <div className="px-3 py-2 text-xs text-muted-foreground">{emptyInitialMessage}</div>
           ) : filtered.length === 0 ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">Brak wyników</div>
           ) : (
