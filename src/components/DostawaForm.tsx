@@ -1247,7 +1247,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Palety *</Label>
                       <Input type="text" inputMode="numeric" pattern="\d*" value={p.palety}
                         onChange={(e) => onPaletyChange(i, e.target.value)}
-                        className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive", shouldPulse(`row_${i}_palety`, showErrs && !!errs.palety) && "field-invalid-pulse")} />
+                        className={cn((errs.palety || totals.palety > MAX_PALETY) && "border-destructive", shouldPulse(`row_${i}_palety`, !!errs.palety) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.palety ?? (totals.palety > MAX_PALETY ? "Limit auta 26 palet" : undefined)} />}
                     </div>
 
