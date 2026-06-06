@@ -154,7 +154,7 @@ function Page() {
         d.kraj_id
           ? supabase.from("kraje").select("kraj_id, nazwa_pl").eq("kraj_id", d.kraj_id).maybeSingle()
           : Promise.resolve({ data: null }),
-        isSuper
+        (isSuper || isKierownik)
           ? supabase
               .from("uzytkownicy")
               .select("uzytkownik_id, imie_nazwisko")
