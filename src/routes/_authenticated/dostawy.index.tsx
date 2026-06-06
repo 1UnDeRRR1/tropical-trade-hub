@@ -20,6 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 interface Row {
   id: string;
   numer_dostawy: string;
+  data_zaladunku: string;
   data_dostawy: string;
   status: string;
   dostawca_id: string;
@@ -54,7 +55,7 @@ function Page() {
       setError(null);
       const { data: dostawy, error: dErr } = await supabase
         .from("dostawy")
-        .select("id, numer_dostawy, data_dostawy, status, dostawca_id, kraj_id, import_manager_id")
+        .select("id, numer_dostawy, data_zaladunku, data_dostawy, status, dostawca_id, kraj_id, import_manager_id")
         .order("data_dostawy", { ascending: false })
         .order("created_at", { ascending: false });
       if (cancelled) return;
@@ -168,7 +169,7 @@ function Page() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Numer</TableHead>
-                    <TableHead>Data</TableHead>
+                    <TableHead>Daty</TableHead>
                     <TableHead>Dostawca</TableHead>
                     <TableHead>Kraj</TableHead>
                     <TableHead>Manager importu</TableHead>
@@ -188,7 +189,12 @@ function Page() {
                           {r.numer_dostawy}
                         </Link>
                       </TableCell>
-                      <TableCell>{r.data_dostawy}</TableCell>
+                      <TableCell>
+                        <div className="text-xs leading-tight">
+                          <div>Załad.: {r.data_zaladunku}</div>
+                          <div className="text-muted-foreground">Dost.: {r.data_dostawy}</div>
+                        </div>
+                      </TableCell>
                       <TableCell>{r.dostawca_nazwa}</TableCell>
                       <TableCell>{r.kraj_nazwa ?? "—"}</TableCell>
                       <TableCell>{r.manager_nazwa}</TableCell>
@@ -219,7 +225,7 @@ function Page() {
                       </div>
                       <div className="text-sm font-medium">{r.dostawca_nazwa}</div>
                       <div className="text-xs text-muted-foreground">
-                        {r.data_dostawy} · {r.kraj_nazwa ?? "—"} · {r.pozycji} poz.
+                        Załad.: {r.data_zaladunku} · Dost.: {r.data_dostawy} · {r.kraj_nazwa ?? "—"} · {r.pozycji} poz.
                       </div>
                       <div className="text-xs text-muted-foreground">{r.manager_nazwa}</div>
                     </CardContent>
