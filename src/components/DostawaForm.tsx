@@ -454,6 +454,19 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [produkty, kraje, opakowania]);
 
+  // Hydrate header combobox queries from loaded labels
+  useEffect(() => {
+    if (!dostawcaQuery && dostawcaId && dostawcy.length) {
+      const d = dostawcy.find((x) => x.id === dostawcaId);
+      if (d) setDostawcaQuery(d.label);
+    }
+    if (!krajZaladunkuQuery && krajId && kraje.length) {
+      const k = kraje.find((x) => x.id === krajId);
+      if (k) setKrajZaladunkuQuery(k.label);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dostawcy, kraje, dostawcaId, krajId]);
+
   useEffect(() => {
     if (mode === "create" && !managerId && isImportMgr && profile?.uzytkownik_id) {
       setManagerId(profile.uzytkownik_id);
@@ -759,28 +772,66 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           </div>
           <div>
             <Label>Dostawca *</Label>
-            <Select value={dostawcaId} onValueChange={setDostawcaId}>
-              <SelectTrigger className={cn(submitTried && !dostawcaId && "border-destructive")}>
-                <SelectValue placeholder="Wybierz dostawcę" />
-              </SelectTrigger>
-              <SelectContent>
-                {dostawcy.map((x) => <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Combobox
+              items={dostawcy}
+              value={dostawcaId}
+              query={dostawcaQuery}
+              filterFn={dostawcaFilter}
+              onQuery={(s) => { setDostawcaQuery(s); setDostawcaId(""); }}
+              onPick={(id, label) => {
+                setDostawcaId(id);
+                setDostawcaQuery(label);
+                if (!id) return;
+                const d = dostawcy.find((x) => x.id === id);
+                if (d?.kraj_id && (!krajManuallySet || !krajId || krajAutofilledFromSupplier === krajId)) {
+                  setKrajId(d.kraj_id);
+                  setKrajAutofilledFromSupplier(d.kraj_id);
+                  setKrajManuallySet(false);
+                  const k = kraje.find((x) => x.id === d.kraj_id);
+                  if (k) setKrajZaladunkuQuery(k.label);
+                }
+              }}
+              placeholder="Wpisz nazwę dostawcy"
+              invalid={submitTried && !dostawcaId}
+            />
+            {submitTried && !dostawcaId && (
+              <FieldErr msg={dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany"} />
+            )}
             {supplierKrajLabel && (
               <p className="mt-1 text-xs text-muted-foreground">Kraj dostawcy: {supplierKrajLabel}</p>
             )}
           </div>
           <div>
-            <Label>Kraj załadunku</Label>
-            <Select value={krajId} onValueChange={onKrajManualChange}>
-              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>
-                {kraje.map((x) => <SelectItem key={x.id} value={x.id}>{x.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label>Kraj załadunku *</Label>
+            <Combobox
+              items={kraje}
+              value={krajId}
+              query={krajZaladunkuQuery}
+              filterFn={krajFilter}
+              onQuery={(s) => {
+                setKrajZaladunkuQuery(s);
+                setKrajId("");
+                setKrajManuallySet(true);
+                setKrajAutofilledFromSupplier(null);
+              }}
+              onPick={(id, label) => {
+                setKrajId(id);
+                setKrajZaladunkuQuery(label);
+                setKrajManuallySet(true);
+                setKrajAutofilledFromSupplier(null);
+              }}
+              placeholder="Wpisz nazwę kraju"
+              invalid={submitTried && !krajId}
+            />
+            {submitTried && !krajId && (
+              <FieldErr msg={krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany"} />
+            )}
             {selectedDostawca?.kraj_id && krajId !== selectedDostawca.kraj_id && (
-              <Button type="button" variant="link" size="sm" className="px-0 h-auto" onClick={insertSupplierCountry}>
+              <Button type="button" variant="link" size="sm" className="px-0 h-auto" onClick={() => {
+                insertSupplierCountry();
+                const k = kraje.find((x) => x.id === selectedDostawca.kraj_id);
+                if (k) setKrajZaladunkuQuery(k.label);
+              }}>
                 Wstaw kraj dostawcy ({supplierKrajLabel})
               </Button>
             )}
@@ -803,7 +854,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         </CardContent>
       </Card>
 
-      <Card className={cn(capacityErrors.length > 0 && "border-destructive")}>
+      <Card className={cn("sticky top-2 z-20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80", capacityErrors.length > 0 && "border-destructive")}>
         <CardHeader><CardTitle>Wykorzystanie auta</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div>
