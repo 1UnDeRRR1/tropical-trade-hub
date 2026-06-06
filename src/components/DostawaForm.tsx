@@ -97,7 +97,9 @@ function startsWithWord(target: string, query: string): boolean {
 }
 function toNum(s: string | null | undefined): number | null {
   if (s === null || s === undefined || s === "") return null;
-  const n = Number(String(s).replace(",","."));
+  const normalized = String(s).trim().replace(",", ".");
+  if (!/^\d+(\.\d+)?$/.test(normalized)) return null;
+  const n = parseFloat(normalized);
   return isFinite(n) ? n : null;
 }
 function isBlank(s: string): boolean {
