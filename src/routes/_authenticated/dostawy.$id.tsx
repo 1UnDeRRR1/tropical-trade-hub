@@ -35,7 +35,7 @@ interface Pozycja {
   produkt_id: string;
   odmiana_id: string | null;
   opakowanie_id: string | null;
-  opakowanie_source: "catalog" | "custom";
+  opakowanie_source: "catalog" | "custom" | "none";
   opakowanie_custom_text: string | null;
   material_tary: "karton" | "drewno" | "plastik";
   kraj_id: string | null;
