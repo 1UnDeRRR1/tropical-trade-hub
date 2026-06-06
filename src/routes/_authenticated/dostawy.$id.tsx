@@ -20,6 +20,7 @@ interface Dostawa {
   id: string;
   numer_dostawy: string;
   data_dostawy: string;
+  data_zaladunku: string | null;
   status: string;
   dostawca_id: string;
   kraj_id: string | null;
@@ -191,8 +192,8 @@ function Page() {
       setStatuses(sMap);
 
       const dostawcaLabel = dRef.data
-        ? ((dRef.data as { alias_dostawcy: string | null; nazwa_dostawcy_original: string | null }).alias_dostawcy ||
-            (dRef.data as { nazwa_dostawcy_original: string | null }).nazwa_dostawcy_original ||
+        ? ((dRef.data as { nazwa_dostawcy_original: string | null }).nazwa_dostawcy_original ||
+            (dRef.data as { alias_dostawcy: string | null }).alias_dostawcy ||
             d.dostawca_id)
         : d.dostawca_id;
       const krajLabel = kRef.data
@@ -272,7 +273,8 @@ function Page() {
                 <CardTitle>Dane dostawy</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div><span className="text-muted-foreground">Data:</span> <strong>{dostawa.data_dostawy}</strong></div>
+                <div><span className="text-muted-foreground">Data załadunku:</span> <strong>{dostawa.data_zaladunku ?? "—"}</strong></div>
+                <div><span className="text-muted-foreground">Data dostawy / przyjazdu:</span> <strong>{dostawa.data_dostawy}</strong></div>
                 <div><span className="text-muted-foreground">Dostawca:</span> <strong>{labels.dostawca}</strong></div>
                 <div><span className="text-muted-foreground">Kraj załadunku:</span> <strong>{labels.kraj || "—"}</strong></div>
                 <div><span className="text-muted-foreground">Manager importu:</span> <strong>{labels.manager}</strong></div>

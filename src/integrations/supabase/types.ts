@@ -276,6 +276,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           data_dostawy: string
+          data_zaladunku: string
           dostawca_id: string
           id: string
           import_manager_id: string
@@ -289,6 +290,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data_dostawy: string
+          data_zaladunku: string
           dostawca_id: string
           id?: string
           import_manager_id: string
@@ -302,6 +304,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data_dostawy?: string
+          data_zaladunku?: string
           dostawca_id?: string
           id?: string
           import_manager_id?: string
@@ -1559,18 +1562,32 @@ export type Database = {
         Args: { _prefix: string; _year: number }
         Returns: number
       }
-      utworz_dostawe_z_pozycjami: {
-        Args: {
-          p_data_dostawy: string
-          p_dostawca_id: string
-          p_import_manager_id: string
-          p_kraj_id: string
-          p_notes: string
-          p_pozycje: Json
-          p_status: string
-        }
-        Returns: string
-      }
+      utworz_dostawe_z_pozycjami:
+        | {
+            Args: {
+              p_data_dostawy: string
+              p_dostawca_id: string
+              p_import_manager_id: string
+              p_kraj_id: string
+              p_notes: string
+              p_pozycje: Json
+              p_status: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_data_dostawy: string
+              p_data_zaladunku?: string
+              p_dostawca_id: string
+              p_import_manager_id: string
+              p_kraj_id: string
+              p_notes: string
+              p_pozycje: Json
+              p_status: string
+            }
+            Returns: string
+          }
     }
     Enums: {
       [_ in never]: never

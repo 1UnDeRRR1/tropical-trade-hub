@@ -95,7 +95,7 @@ function Page() {
 
       const dostMap = new Map<string, string>();
       ((dostRes.data ?? []) as Array<{ dostawca_id: string; nazwa_dostawcy_original: string | null; alias_dostawcy: string | null }>).forEach((d) =>
-        dostMap.set(d.dostawca_id, d.alias_dostawcy || d.nazwa_dostawcy_original || d.dostawca_id),
+        dostMap.set(d.dostawca_id, d.nazwa_dostawcy_original || d.alias_dostawcy || d.dostawca_id),
       );
       const krajMap = new Map<string, string>();
       ((krajRes.data ?? []) as Array<{ kraj_id: string; nazwa_pl: string | null }>).forEach((k) =>
