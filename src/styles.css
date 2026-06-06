@@ -145,8 +145,22 @@
 
 @keyframes field-invalid-pulse {
   0%, 100% { box-shadow: 0 0 0 0 oklch(from var(--destructive) l c h / 0); }
-  50% { box-shadow: 0 0 0 4px oklch(from var(--destructive) l c h / 0.35); }
+  50% { box-shadow: 0 0 0 4px oklch(from var(--destructive) l c h / 0.45); }
 }
 .field-invalid-pulse {
-  animation: field-invalid-pulse 0.7s ease-in-out 1;
+  animation: field-invalid-pulse 0.35s ease-in-out 3;
+}
+
+@keyframes form-shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(3px); }
+  30%, 50%, 70% { transform: translateX(-5px); }
+  40%, 60% { transform: translateX(5px); }
+}
+.form-shake {
+  animation: form-shake 0.5s ease-in-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-invalid-pulse, .form-shake { animation: none; }
 }
