@@ -233,12 +233,14 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
                    initialItems, emptyInitialMessage }: ComboProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const selectingOptionRef = useRef(false);
+  const pickedOnPointerRef = useRef(false);
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handler = (e: PointerEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
   }, []);
   const isInitial = query.trim().length < minChars;
   const filtered = useMemo(() => {
@@ -250,15 +252,30 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
     return items.filter((it) => fn(it, query)).slice(0, maxItems);
   }, [items, initialItems, query, isInitial, showInitialItems, filterFn, maxItems]);
 
+  const pickOption = (id: string, label: string) => {
+    selectingOptionRef.current = true;
+    onPick(id, label);
+    setOpen(false);
+    window.setTimeout(() => { selectingOptionRef.current = false; }, 0);
+  };
+
   return (
     <div className="relative" ref={wrapRef}>
       <div className="flex gap-1">
         <Input value={query} placeholder={placeholder}
-          className={cn(invalid && "border-destructive focus-visible:ring-destructive field-invalid-pulse")}
+          className={cn(invalid && "border-destructive focus-visible:ring-destructive")}
           aria-invalid={invalid || undefined}
           onFocus={() => setOpen(true)}
           onChange={(e) => { onQuery(e.target.value); setOpen(true); }}
-          onBlur={onBlurInput} />
+          onBlur={(event) => {
+            const nextTarget = event.relatedTarget as Node | null;
+            window.setTimeout(() => {
+              if (selectingOptionRef.current) return;
+              if (nextTarget && wrapRef.current?.contains(nextTarget)) return;
+              setOpen(false);
+              onBlurInput?.();
+            }, 0);
+          }} />
         {value && (
           <Button type="button" variant="ghost" size="icon" onClick={() => { onPick("",""); onQuery(""); }} title="Wyczyść">
             <X className="h-4 w-4" />
@@ -266,7 +283,7 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
         )}
       </div>
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-72 overflow-auto">
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-[132px] overflow-y-auto overflow-x-hidden overscroll-contain">
           {extraTop}
           {isInitial && !showInitialItems ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">Zacznij wpisywać…</div>
@@ -277,8 +294,19 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
           ) : (
             filtered.map((it) => (
               <button key={it.id} type="button"
-                className="block w-full text-left px-3 py-2 text-sm hover:bg-accent"
-                onClick={() => { onPick(it.id, it.label); setOpen(false); }}>
+                className="block min-h-11 w-full text-left px-3 py-2 text-sm hover:bg-accent focus:bg-accent"
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  pickedOnPointerRef.current = true;
+                  pickOption(it.id, it.label);
+                }}
+                onClick={() => {
+                  if (pickedOnPointerRef.current) {
+                    pickedOnPointerRef.current = false;
+                    return;
+                  }
+                  pickOption(it.id, it.label);
+                }}>
                 {it.label}
               </button>
             ))
