@@ -95,7 +95,7 @@ const EMPTY_POZ: PozycjaForm = {
   kraj_id: "",
   kraj_query: "",
   odmiana_id: "",
-  opakowanie_source: "catalog",
+  opakowanie_source: "none",
   opakowanie_id: "",
   opakowanie_query: "",
   opakowanie_custom_text: "",
@@ -156,26 +156,89 @@ function isBlank(s: string): boolean {
 // ====================================================================
 // Calculation engine — one logical chain per position
 // ====================================================================
-interface CalcResult {
-  ilosc_opakowan: string;
-  netto_kg: string;
-  brutto_kg: string;
+type ChangedField =
+  | "produkt"
+  | "kraj"
+  | "odmiana"
+  | "opakowanie"
+  | "material_tary"
+  | "palety"
+  | "ilosc_opakowan"
+  | "netto_kg"
+  | "brutto_kg"
+  | "cena_zakupu"
+  | "waluta"
+  | "notes";
+
+interface PositionCalculation {
+  next: PozycjaForm;
+  standard: StandardRow | null;
+  warnings: string[];
 }
 
-/**
- * Recalculate downstream weights for a position when a catalog standard
- * is available and weights were auto-filled (not manually overridden).
- * Drives: palety -> total boxes -> netto, brutto.
- */
-function calcFromStandard(palety: number, std: StandardRow): CalcResult {
-  const ilosc = std.liczba_opakowan_na_palecie ? std.liczba_opakowan_na_palecie * palety : null;
-  const netto = std.waga_netto_opakowania_kg && ilosc !== null ? std.waga_netto_opakowania_kg * ilosc : null;
-  const brutto = std.waga_brutto_opakowania_kg && ilosc !== null ? std.waga_brutto_opakowania_kg * ilosc : null;
-  return {
-    ilosc_opakowan: ilosc !== null ? String(Math.round(ilosc)) : "",
-    netto_kg: netto !== null ? netto.toFixed(2) : "",
-    brutto_kg: brutto !== null ? brutto.toFixed(2) : "",
+function fmtAmount(n: number, fractionDigits = 2): string {
+  return Number.isInteger(n) && fractionDigits === 0 ? String(n) : n.toFixed(fractionDigits);
+}
+
+function differsFromExpected(actual: string, expected: number | null): boolean {
+  const a = toNum(actual);
+  if (a === null || expected === null) return false;
+  return Math.abs(a - expected) > 0.01;
+}
+
+function calculatePositionLine(
+  input: PozycjaForm,
+  changedField: ChangedField,
+  standard: StandardRow | null,
+): PositionCalculation {
+  const next: PozycjaForm = { ...input };
+  const warnings: string[] = [];
+
+  if (next.opakowanie_source !== "catalog" || !standard) {
+    if (changedField === "opakowanie" || changedField === "produkt" || changedField === "kraj") {
+      next.weights_autofilled = false;
+    }
+    return { next, standard: null, warnings };
+  }
+
+  const boxesPerPallet = standard.liczba_opakowan_na_palecie;
+  const netPerBox = standard.waga_netto_opakowania_kg;
+  const grossPerBox = standard.waga_brutto_opakowania_kg;
+  const palety = toNum(next.palety);
+  const boxes = toNum(next.ilosc_opakowan);
+
+  const recalcFromBoxes = (boxCount: number) => {
+    next.ilosc_opakowan = fmtAmount(boxCount, 0);
+    if (netPerBox !== null) next.netto_kg = fmtAmount(boxCount * netPerBox);
+    if (grossPerBox !== null) next.brutto_kg = fmtAmount(boxCount * grossPerBox);
+    next.weights_autofilled = true;
   };
+
+  if (changedField === "palety" || changedField === "opakowanie" || changedField === "produkt" || changedField === "kraj") {
+    if (palety !== null && boxesPerPallet !== null) {
+      recalcFromBoxes(Math.max(0, palety) * boxesPerPallet);
+    } else if (boxes !== null) {
+      recalcFromBoxes(Math.max(0, boxes));
+    }
+  } else if (changedField === "ilosc_opakowan" && boxes !== null) {
+    recalcFromBoxes(Math.max(0, boxes));
+  } else if (changedField === "netto_kg" || changedField === "brutto_kg") {
+    next.weights_autofilled = false;
+  }
+
+  const expectedBoxes = palety !== null && boxesPerPallet !== null ? Math.max(0, palety) * boxesPerPallet : null;
+  const expectedNet = expectedBoxes !== null && netPerBox !== null ? expectedBoxes * netPerBox : null;
+  const expectedGross = expectedBoxes !== null && grossPerBox !== null ? expectedBoxes * grossPerBox : null;
+  if (
+    !next.weights_autofilled &&
+    (differsFromExpected(next.ilosc_opakowan, expectedBoxes) ||
+      differsFromExpected(next.netto_kg, expectedNet) ||
+      differsFromExpected(next.brutto_kg, expectedGross))
+  ) {
+    warnings.push("Ręczna korekta wartości względem standardu palety");
+  }
+
+  return { next, standard, warnings };
 }
 
 // ====================================================================
@@ -186,22 +249,27 @@ type FieldErrors = Partial<Record<keyof PozycjaForm | "opakowanie", string>>;
 function validatePosition(p: PozycjaForm): FieldErrors {
   const e: FieldErrors = {};
   if (!p.produkt_id) e.produkt_id = "Produkt wymagany (wybierz z listy)";
-  if (p.opakowanie_source === "catalog" && !p.opakowanie_id) e.opakowanie = "Opakowanie z katalogu wymagane";
+  if (!p.kraj_id) e.kraj_id = "Kraj pochodzenia wymagany (wybierz z listy)";
   if (p.opakowanie_source === "custom") {
     const t = p.opakowanie_custom_text.trim();
-    if (!t) e.opakowanie_custom_text = "Wpisz własne opakowanie";
-    else if (t.length > 200) e.opakowanie_custom_text = "Max 200 znaków";
+    if (t.length > 200) e.opakowanie_custom_text = "Max 200 znaków";
   }
   if (!p.material_tary) e.material_tary = "Materiał tary wymagany";
-  if (isBlank(p.palety) || Number(p.palety) < 0) e.palety = "Palety >= 0";
+  const palety = toNum(p.palety);
+  const ilosc = toNum(p.ilosc_opakowan);
+  const netto = toNum(p.netto_kg);
+  const brutto = toNum(p.brutto_kg);
+  const cena = toNum(p.cena_zakupu);
+  if (isBlank(p.palety) || palety === null || palety < 0) e.palety = "Palety >= 0";
+  if (!isBlank(p.ilosc_opakowan) && (ilosc === null || ilosc < 0)) e.ilosc_opakowan = "Ilość opakowań >= 0";
   if (isBlank(p.netto_kg)) e.netto_kg = "Netto kg wymagane";
-  else if (Number(p.netto_kg) <= 0) e.netto_kg = "Netto kg musi być > 0";
+  else if (netto === null || netto <= 0) e.netto_kg = "Netto kg musi być > 0";
   if (isBlank(p.brutto_kg)) e.brutto_kg = "Brutto kg wymagane";
-  else if (Number(p.brutto_kg) <= 0) e.brutto_kg = "Brutto kg musi być > 0";
-  else if (!isBlank(p.netto_kg) && Number(p.brutto_kg) < Number(p.netto_kg))
+  else if (brutto === null || brutto <= 0) e.brutto_kg = "Brutto kg musi być > 0";
+  else if (netto !== null && brutto < netto)
     e.brutto_kg = "Brutto kg nie może być mniejsze niż netto kg";
   if (isBlank(p.cena_zakupu)) e.cena_zakupu = "Cena zakupu wymagana";
-  else if (Number(p.cena_zakupu) < 0) e.cena_zakupu = "Cena zakupu >= 0";
+  else if (cena === null || cena < 0) e.cena_zakupu = "Cena zakupu >= 0";
   if (!["PLN", "EUR", "USD"].includes(p.waluta)) e.waluta = "PLN/EUR/USD";
   return e;
 }
