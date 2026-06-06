@@ -374,6 +374,11 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const [saving, setSaving] = useState(false);
   const [submitTried, setSubmitTried] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [shakeKey, setShakeKey] = useState(0);
+  const triggerShake = () => {
+    setShakeKey((k) => k + 1);
+    try { if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.([60, 40, 60]); } catch { /* noop */ }
+  };
 
   // -----------------------------------------------------------------
   // Load reference data + aliases
