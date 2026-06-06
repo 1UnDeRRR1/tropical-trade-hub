@@ -750,7 +750,7 @@ function Page() {
                           onQuery={(s) => updateRow(i, { opakowanie_query: s, opakowanie_id: "" })}
                           onPick={(id, label) => onPickOpakowanie(i, id, label)}
                           placeholder={p.produkt_id ? "Wyszukaj opakowanie…" : "Wybierz najpierw produkt, lub wyszukaj"}
-                          minChars={1}
+                          minChars={2}
                           extraTop={
                             <button
                               type="button"

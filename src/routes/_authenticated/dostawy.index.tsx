@@ -20,6 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 interface Row {
   id: string;
   numer_dostawy: string;
+  data_zaladunku: string;
   data_dostawy: string;
   status: string;
   dostawca_id: string;
@@ -54,7 +55,7 @@ function Page() {
       setError(null);
       const { data: dostawy, error: dErr } = await supabase
         .from("dostawy")
-        .select("id, numer_dostawy, data_dostawy, status, dostawca_id, kraj_id, import_manager_id")
+        .select("id, numer_dostawy, data_zaladunku, data_dostawy, status, dostawca_id, kraj_id, import_manager_id")
         .order("data_dostawy", { ascending: false })
         .order("created_at", { ascending: false });
       if (cancelled) return;
