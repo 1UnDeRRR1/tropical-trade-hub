@@ -214,6 +214,18 @@ function validatePosition(p: PozycjaForm): FieldErrors {
   return e;
 }
 
+function calculateTotals(pozycje: PozycjaForm[]) {
+  const palety = pozycje.reduce((s, p) => s + (toNum(p.palety) ?? 0), 0);
+  const netto = pozycje.reduce((s, p) => s + (toNum(p.netto_kg) ?? 0), 0);
+  const brutto = pozycje.reduce((s, p) => s + (toNum(p.brutto_kg) ?? 0), 0);
+  const byWal = new Map<string, number>();
+  for (const p of pozycje) {
+    const val = (toNum(p.netto_kg) ?? 0) * (toNum(p.cena_zakupu) ?? 0);
+    byWal.set(p.waluta, (byWal.get(p.waluta) || 0) + val);
+  }
+  return { palety, netto, brutto, byWal };
+}
+
 
 // ---------- Combobox ----------
 interface ComboProps {
@@ -225,20 +237,23 @@ interface ComboProps {
   extraTop?: React.ReactNode; showInitialItems?: boolean; maxItems?: number;
   filterFn?: (item: RefItem, query: string) => boolean;
   invalid?: boolean;
+  invalidPulse?: boolean;
   initialItems?: RefItem[];
   emptyInitialMessage?: string;
 }
 function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placeholder, minChars = 2,
-                   extraTop, showInitialItems = false, maxItems = 20, filterFn, invalid,
+                   extraTop, showInitialItems = false, maxItems = 20, filterFn, invalid, invalidPulse,
                    initialItems, emptyInitialMessage }: ComboProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const selectingOptionRef = useRef(false);
+  const pickedOnPointerRef = useRef(false);
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handler = (e: PointerEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
   }, []);
   const isInitial = query.trim().length < minChars;
   const filtered = useMemo(() => {
@@ -250,15 +265,33 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
     return items.filter((it) => fn(it, query)).slice(0, maxItems);
   }, [items, initialItems, query, isInitial, showInitialItems, filterFn, maxItems]);
 
+  const pickOption = (id: string, label: string) => {
+    selectingOptionRef.current = true;
+    onPick(id, label);
+    setOpen(false);
+    window.setTimeout(() => { selectingOptionRef.current = false; }, 0);
+  };
+
   return (
     <div className="relative" ref={wrapRef}>
       <div className="flex gap-1">
         <Input value={query} placeholder={placeholder}
-          className={cn(invalid && "border-destructive focus-visible:ring-destructive field-invalid-pulse")}
+          className={cn(
+            invalid && "border-destructive focus-visible:ring-destructive",
+            invalidPulse && "field-invalid-pulse",
+          )}
           aria-invalid={invalid || undefined}
           onFocus={() => setOpen(true)}
           onChange={(e) => { onQuery(e.target.value); setOpen(true); }}
-          onBlur={onBlurInput} />
+          onBlur={(event) => {
+            const nextTarget = event.relatedTarget as Node | null;
+            window.setTimeout(() => {
+              if (selectingOptionRef.current) return;
+              if (nextTarget && wrapRef.current?.contains(nextTarget)) return;
+              setOpen(false);
+              onBlurInput?.();
+            }, 0);
+          }} />
         {value && (
           <Button type="button" variant="ghost" size="icon" onClick={() => { onPick("",""); onQuery(""); }} title="Wyczyść">
             <X className="h-4 w-4" />
@@ -266,7 +299,7 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
         )}
       </div>
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-72 overflow-auto">
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-[132px] overflow-y-auto overflow-x-hidden overscroll-contain">
           {extraTop}
           {isInitial && !showInitialItems ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">Zacznij wpisywać…</div>
@@ -277,8 +310,19 @@ function Combobox({ items, value, query, onQuery, onPick, onBlurInput, placehold
           ) : (
             filtered.map((it) => (
               <button key={it.id} type="button"
-                className="block w-full text-left px-3 py-2 text-sm hover:bg-accent"
-                onClick={() => { onPick(it.id, it.label); setOpen(false); }}>
+                className="block min-h-11 w-full text-left px-3 py-2 text-sm hover:bg-accent focus:bg-accent"
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  pickedOnPointerRef.current = true;
+                  pickOption(it.id, it.label);
+                }}
+                onClick={() => {
+                  if (pickedOnPointerRef.current) {
+                    pickedOnPointerRef.current = false;
+                    return;
+                  }
+                  pickOption(it.id, it.label);
+                }}>
                 {it.label}
               </button>
             ))
@@ -390,11 +434,28 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const [saving, setSaving] = useState(false);
   const [submitTried, setSubmitTried] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const pulseTimerRef = useRef<number | null>(null);
+  const [activePulseFields, setActivePulseFields] = useState<Set<string>>(() => new Set());
   const [shakeKey, setShakeKey] = useState(0);
-  const triggerShake = () => {
+  const pulseFields = (fields: string[]) => {
+    if (pulseTimerRef.current !== null) window.clearTimeout(pulseTimerRef.current);
+    setActivePulseFields(new Set(fields));
+    pulseTimerRef.current = window.setTimeout(() => {
+      setActivePulseFields(new Set());
+      pulseTimerRef.current = null;
+    }, 1200);
+  };
+  const triggerFailedSubmitFeedback = (fields: string[]) => {
     setShakeKey((k) => k + 1);
+    pulseFields(fields);
     try { if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.([60, 40, 60]); } catch { /* noop */ }
   };
+  const triggerFieldFeedback = (field: string) => pulseFields([field]);
+  const shouldPulse = (field: string, invalid: boolean) => invalid && activePulseFields.has(field);
+
+  useEffect(() => () => {
+    if (pulseTimerRef.current !== null) window.clearTimeout(pulseTimerRef.current);
+  }, []);
 
   // -----------------------------------------------------------------
   // Load reference data + aliases
@@ -686,17 +747,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     [pozycje, standardy, kraje],
   );
 
-  const totals = useMemo(() => {
-    const palety = pozycje.reduce((s, p) => s + (toNum(p.palety) ?? 0), 0);
-    const netto = pozycje.reduce((s, p) => s + (toNum(p.netto_kg) ?? 0), 0);
-    const brutto = pozycje.reduce((s, p) => s + (toNum(p.brutto_kg) ?? 0), 0);
-    const byWal = new Map<string, number>();
-    for (const p of pozycje) {
-      const val = (toNum(p.netto_kg) ?? 0) * (toNum(p.cena_zakupu) ?? 0);
-      byWal.set(p.waluta, (byWal.get(p.waluta) || 0) + val);
-    }
-    return { palety, netto, brutto, byWal };
-  }, [pozycje]);
+  const totals = useMemo(() => calculateTotals(pozycje), [pozycje]);
 
   const capacityErrors: string[] = useMemo(() => {
     const errs: string[] = [];
@@ -725,14 +776,62 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     capacityErrors.length > 0 ||
     lineErrors.some((e) => Object.keys(e).length > 0);
 
+  const lineErrorLabels: Partial<Record<keyof PozycjaForm | "opakowanie", string>> = {
+    produkt_id: "Produkt",
+    kraj_id: "Kraj pochodzenia",
+    material_tary: "Materiał tary",
+    palety: "Palety",
+    ilosc_opakowan: "Ilość opakowań",
+    netto_kg: "Netto",
+    brutto_kg: "Brutto",
+    cena_zakupu: "Cena za 1 kg",
+    notes: "Komentarz pozycji",
+    opakowanie_custom_text: "Opakowanie",
+  };
+
+  const submitSummary = useMemo(() => [
+    ...headerErrors,
+    ...capacityErrors,
+    ...lineErrors.flatMap((errs, rowIndex) =>
+      Object.entries(errs).map(([field, msg]) =>
+        `Pozycja ${rowIndex + 1}: ${lineErrorLabels[field as keyof typeof lineErrorLabels] ?? field} — ${msg}`,
+      ),
+    ),
+    ...(submitError ? [submitError] : []),
+  ], [headerErrors, capacityErrors, lineErrors, submitError]);
+
+  const invalidFieldKeys = (freshLineErrors = lineErrors) => [
+    ...(!dostawcaId ? ["dostawca"] : []),
+    ...(!krajId ? ["kraj_zaladunku"] : []),
+    ...(!dataZaladunku || dataZaladunku < todayStr ? ["data_zaladunku"] : []),
+    ...(!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku) ? ["data_dostawy"] : []),
+    ...(!managerId ? ["manager"] : []),
+    ...((notes ?? "").length > 100 ? ["notes"] : []),
+    ...freshLineErrors.flatMap((errs, rowIndex) => Object.keys(errs).map((field) => `row_${rowIndex}_${field}`)),
+  ];
+
   // ---------- Submit ----------
   const submit = async (s: "draft" | "planned") => {
     setSubmitError(null);
     setSubmitTried(true);
     setStatus(s);
-    if (hasAnyError) {
+    const freshLineErrors = pozycje.map((p) => validatePosition(p));
+    const freshHeaderErrors: string[] = [];
+    if (!dostawcaId) freshHeaderErrors.push(dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany");
+    if (!krajId) freshHeaderErrors.push(krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany");
+    if (!dataZaladunku) freshHeaderErrors.push("Data załadunku wymagana");
+    else if (dataZaladunku < todayStr) freshHeaderErrors.push("Data załadunku nie może być wcześniejsza niż dzisiaj");
+    if (!dataDostawy) freshHeaderErrors.push("Data dostawy wymagana");
+    else if (dataZaladunku && dataDostawy <= dataZaladunku) freshHeaderErrors.push("Data dostawy musi być późniejsza niż data załadunku");
+    if (!managerId) freshHeaderErrors.push("Import manager wymagany");
+    if ((notes ?? "").length > 100) freshHeaderErrors.push("Komentarz: maksymalnie 100 znaków");
+    const freshTotals = calculateTotals(pozycje);
+    const freshCapacityErrors: string[] = [];
+    if (freshTotals.palety > MAX_PALETY) freshCapacityErrors.push(`Łączna liczba palet ${freshTotals.palety} przekracza limit auta (${MAX_PALETY}).`);
+    if (freshTotals.brutto > MAX_BRUTTO_KG) freshCapacityErrors.push(`Łączna waga brutto ${freshTotals.brutto.toFixed(2)} kg przekracza limit auta (${MAX_BRUTTO_KG} kg).`);
+    if (freshHeaderErrors.length > 0 || freshCapacityErrors.length > 0 || freshLineErrors.some((e) => Object.keys(e).length > 0)) {
       setSubmitError("Formularz zawiera błędy. Popraw zaznaczone pola.");
-      triggerShake();
+      triggerFailedSubmitFeedback(invalidFieldKeys(freshLineErrors));
       return;
     }
     setSaving(true);
@@ -763,7 +862,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     if (payload.some((r) => r.netto_kg == null || r.brutto_kg == null || r.cena_zakupu == null)) {
       setSaving(false);
       setSubmitError("Niepoprawne wartości liczbowe. Popraw zaznaczone pola.");
-      triggerShake();
+      triggerFailedSubmitFeedback(invalidFieldKeys(freshLineErrors));
       return;
     }
 
@@ -853,15 +952,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 }
               }}
               onBlurInput={() => {
-                setTimeout(() => {
-                  if (!dostawcaId && dostawcaQuery.trim()) {
-                    setDostawcaQuery("");
-                    triggerShake();
-                  }
-                }, 220);
+                if (!dostawcaId && dostawcaQuery.trim()) {
+                  setDostawcaQuery("");
+                  triggerFieldFeedback("dostawca");
+                }
               }}
               placeholder="Wpisz nazwę dostawcy"
               invalid={submitTried && !dostawcaId}
+              invalidPulse={shouldPulse("dostawca", submitTried && !dostawcaId)}
             />
             {submitTried && !dostawcaId && (
               <FieldErr msg={dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany"} />
@@ -891,15 +989,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 setKrajAutofilledFromSupplier(null);
               }}
               onBlurInput={() => {
-                setTimeout(() => {
-                  if (!krajId && krajZaladunkuQuery.trim()) {
-                    setKrajZaladunkuQuery("");
-                    triggerShake();
-                  }
-                }, 220);
+                if (!krajId && krajZaladunkuQuery.trim()) {
+                  setKrajZaladunkuQuery("");
+                  triggerFieldFeedback("kraj_zaladunku");
+                }
               }}
               placeholder="Wpisz nazwę kraju"
               invalid={submitTried && !krajId}
+              invalidPulse={shouldPulse("kraj_zaladunku", submitTried && !krajId)}
             />
             {submitTried && !krajId && (
               <FieldErr msg={krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany"} />
@@ -922,7 +1019,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             <div>
               <Label>Data załadunku *</Label>
               <Input type="date" min={todayStr} value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
-                     className={cn(submitTried && (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive field-invalid-pulse")} />
+                     className={cn("h-10 min-w-0 text-sm", submitTried && (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive", shouldPulse("data_zaladunku", submitTried && (!dataZaladunku || dataZaladunku < todayStr)) && "field-invalid-pulse")} />
               {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
               {submitTried && dataZaladunku && dataZaladunku < todayStr && (
                 <FieldErr msg="Data załadunku nie może być wcześniejsza niż dzisiaj" />
@@ -932,7 +1029,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             <div>
               <Label>Data dostawy *</Label>
               <Input type="date" min={dataZaladunku || todayStr} value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
-                     className={cn(submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive field-invalid-pulse")} />
+                     className={cn("h-10 min-w-0 text-sm", submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive", shouldPulse("data_dostawy", !!(submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)))) && "field-invalid-pulse")} />
               {submitTried && !dataDostawy && <FieldErr msg="Data dostawy wymagana" />}
               {submitTried && dataDostawy && dataZaladunku && dataDostawy <= dataZaladunku && (
                 <FieldErr msg="Data dostawy musi być późniejsza niż data załadunku" />
@@ -946,7 +1043,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
               <Input value={managers[0].label} readOnly className="bg-muted/40" />
             ) : (
               <Select value={managerId} onValueChange={setManagerId} disabled={isImportMgr && !isSuper}>
-                <SelectTrigger className={cn(submitTried && !managerId && "border-destructive field-invalid-pulse")}>
+                <SelectTrigger className={cn(submitTried && !managerId && "border-destructive", shouldPulse("manager", submitTried && !managerId) && "field-invalid-pulse")}>
                   <SelectValue placeholder="Wybierz" />
                 </SelectTrigger>
                 <SelectContent>
@@ -960,7 +1057,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           <div>
             <Label>Komentarz</Label>
             <Input value={notes} maxLength={100} onChange={(e) => setNotes(e.target.value)}
-              className={cn(submitTried && (notes ?? "").length > 100 && "border-destructive field-invalid-pulse")} />
+              className={cn(submitTried && (notes ?? "").length > 100 && "border-destructive", shouldPulse("notes", submitTried && (notes ?? "").length > 100) && "field-invalid-pulse")} />
             <p className="mt-1 text-xs text-muted-foreground">{(notes ?? "").length}/100</p>
             {submitTried && (notes ?? "").length > 100 && <FieldErr msg="Maksymalnie 100 znaków" />}
           </div>
@@ -1008,7 +1105,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         <CardContent className="space-y-4">
           {pozycje.map((p, i) => {
             const errs = lineErrors[i];
-            const showErrs = true;
+            const showErrs = submitTried;
             const odmianyForProdukt = p.produkt_id ? odmiany.filter((o) => o.produkt_id === p.produkt_id) : [];
             const sugg = suggestedOpakIdsOrdered(p.produkt_id, p.kraj_id);
             const opakById = new Map(opakowania.map((o) => [o.id, o] as const));
@@ -1048,16 +1145,15 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         })}
                         onPick={(id, label) => onPickProdukt(i, id, label)}
                         onBlurInput={() => {
-                          setTimeout(() => {
-                            const cur = pozycje[i];
-                            if (cur && !cur.produkt_id && cur.produkt_query.trim()) {
-                              updateRow(i, { produkt_query: "" });
-                              triggerShake();
-                            }
-                          }, 220);
+                          const cur = pozycje[i];
+                          if (cur && !cur.produkt_id && cur.produkt_query.trim()) {
+                            updateRow(i, { produkt_query: "" });
+                            triggerFieldFeedback(`row_${i}_produkt_id`);
+                          }
                         }}
                         placeholder="Np. cebula, ananas…"
                         invalid={showErrs && !!errs.produkt_id}
+                        invalidPulse={shouldPulse(`row_${i}_produkt_id`, showErrs && !!errs.produkt_id)}
                       />
                       {showErrs && <FieldErr msg={errs.produkt_id} />}
                     </div>
@@ -1072,16 +1168,15 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         onQuery={(s) => updateRow(i, { kraj_query: s, kraj_id: "", weights_autofilled: false })}
                         onPick={(id, label) => onPickKrajPoch(i, id, label)}
                         onBlurInput={() => {
-                          setTimeout(() => {
-                            const cur = pozycje[i];
-                            if (cur && !cur.kraj_id && cur.kraj_query.trim()) {
-                              updateRow(i, { kraj_query: "" });
-                              triggerShake();
-                            }
-                          }, 220);
+                          const cur = pozycje[i];
+                          if (cur && !cur.kraj_id && cur.kraj_query.trim()) {
+                            updateRow(i, { kraj_query: "" });
+                            triggerFieldFeedback(`row_${i}_kraj_id`);
+                          }
                         }}
                         placeholder="Np. Hiszpania, Maroko…"
                         invalid={showErrs && !!errs.kraj_id}
+                        invalidPulse={shouldPulse(`row_${i}_kraj_id`, showErrs && !!errs.kraj_id)}
                       />
                       {showErrs && <FieldErr msg={errs.kraj_id} />}
                     </div>
@@ -1124,6 +1219,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         ? "Brak standardów palet dla tego produktu — wpisz tekst, aby wyszukać opakowanie"
                         : undefined}
                       invalid={showErrs && !!errs.opakowanie_custom_text}
+                      invalidPulse={shouldPulse(`row_${i}_opakowanie_custom_text`, showErrs && !!errs.opakowanie_custom_text)}
                     />
                     {warnings.length > 0 && (
                       <p className="mt-1 text-xs text-muted-foreground">{warnings[0]}</p>
@@ -1138,7 +1234,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                         <Button key={m} type="button" size="sm"
                           variant={p.material_tary === m ? "default" : "outline"}
                           onClick={() => onMaterialChange(i, m)}
-                          className={cn(showErrs && errs.material_tary && !p.material_tary && "border-destructive field-invalid-pulse")}>
+                          className={cn(showErrs && errs.material_tary && !p.material_tary && "border-destructive", shouldPulse(`row_${i}_material_tary`, showErrs && !!errs.material_tary && !p.material_tary) && "field-invalid-pulse")}>
                           {m === "karton" ? "Karton" : m === "drewno" ? "Drewno" : "Plastik"}
                         </Button>
                       ))}
@@ -1151,7 +1247,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Palety *</Label>
                       <Input type="text" inputMode="numeric" pattern="\d*" value={p.palety}
                         onChange={(e) => onPaletyChange(i, e.target.value)}
-                        className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive field-invalid-pulse")} />
+                        className={cn(showErrs && (errs.palety || totals.palety > MAX_PALETY) && "border-destructive", shouldPulse(`row_${i}_palety`, showErrs && !!errs.palety) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.palety ?? (totals.palety > MAX_PALETY ? "Limit auta 26 palet" : undefined)} />}
                     </div>
 
@@ -1159,7 +1255,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Ilość opakowań *</Label>
                       <Input type="text" inputMode="numeric" pattern="\d*" value={p.ilosc_opakowan}
                         onChange={(e) => onIloscOpakowanChange(i, e.target.value)}
-                        className={cn(showErrs && errs.ilosc_opakowan && "border-destructive field-invalid-pulse")} />
+                        className={cn(showErrs && errs.ilosc_opakowan && "border-destructive", shouldPulse(`row_${i}_ilosc_opakowan`, showErrs && !!errs.ilosc_opakowan) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.ilosc_opakowan} />}
                     </div>
                   </div>
@@ -1169,7 +1265,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Netto (kg) *</Label>
                       <Input type="text" inputMode="decimal" value={p.netto_kg}
                         onChange={(e) => applyChainedPatch(i, { netto_kg: e.target.value }, "netto_kg")}
-                        className={cn(showErrs && errs.netto_kg && "border-destructive field-invalid-pulse")} />
+                        className={cn(showErrs && errs.netto_kg && "border-destructive", shouldPulse(`row_${i}_netto_kg`, showErrs && !!errs.netto_kg) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.netto_kg} />}
                     </div>
 
@@ -1177,7 +1273,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Brutto (kg) *</Label>
                       <Input type="text" inputMode="decimal" value={p.brutto_kg}
                         onChange={(e) => applyChainedPatch(i, { brutto_kg: e.target.value }, "brutto_kg")}
-                        className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive field-invalid-pulse")} />
+                        className={cn(showErrs && (errs.brutto_kg || totals.brutto > MAX_BRUTTO_KG) && "border-destructive", shouldPulse(`row_${i}_brutto_kg`, showErrs && !!errs.brutto_kg) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.brutto_kg ?? (totals.brutto > MAX_BRUTTO_KG ? "Limit auta 21500 kg" : undefined)} />}
                     </div>
                   </div>
@@ -1187,7 +1283,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       <Label>Cena za 1 kg (€) *</Label>
                       <Input type="text" inputMode="decimal" value={p.cena_zakupu}
                         onChange={(e) => updateRow(i, { cena_zakupu: e.target.value })}
-                        className={cn(showErrs && errs.cena_zakupu && "border-destructive field-invalid-pulse")} />
+                        className={cn(showErrs && errs.cena_zakupu && "border-destructive", shouldPulse(`row_${i}_cena_zakupu`, showErrs && !!errs.cena_zakupu) && "field-invalid-pulse")} />
                       {showErrs && <FieldErr msg={errs.cena_zakupu} />}
                     </div>
 
@@ -1210,7 +1306,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     <Label>Komentarz</Label>
                     <Input value={p.notes} maxLength={100}
                       onChange={(e) => updateRow(i, { notes: e.target.value })}
-                      className={cn(showErrs && errs.notes && "border-destructive field-invalid-pulse")} />
+                      className={cn(showErrs && errs.notes && "border-destructive", shouldPulse(`row_${i}_notes`, showErrs && !!errs.notes) && "field-invalid-pulse")} />
                     <p className="mt-1 text-xs text-muted-foreground">{(p.notes ?? "").length}/100</p>
                     {showErrs && <FieldErr msg={errs.notes} />}
                   </div>
@@ -1230,6 +1326,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           <div>Razem netto (kg): <strong>{totals.netto.toFixed(2)}</strong></div>
           <div>Razem brutto (kg): <strong>{totals.brutto.toFixed(2)}</strong> / {MAX_BRUTTO_KG}</div>
           <div>Razem wartość (€): <strong>{(totals.byWal.get("EUR") ?? 0).toFixed(2)}</strong></div>
+
+          {submitTried && submitSummary.length > 0 && (
+            <div className="rounded-md border border-destructive p-3 text-sm text-destructive space-y-1">
+              <div className="font-medium">Nie można zapisać dostawy:</div>
+              {submitSummary.slice(0, 12).map((m, i) => <div key={i}>• {m}</div>)}
+              {submitSummary.length > 12 && <div>• I inne błędy: {submitSummary.length - 12}</div>}
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-2 pt-4">
             <Button type="button" variant="outline" disabled={saving} onClick={() => submit("draft")}>
