@@ -802,18 +802,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         <CardHeader><CardTitle>Dane dostawy</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label>Data załadunku *</Label>
-            <Input type="date" value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
-                   className={cn(submitTried && !dataZaladunku && "border-destructive field-invalid-pulse")} />
-            {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
-          </div>
-          <div>
-            <Label>Data dostawy / przyjazdu *</Label>
-            <Input type="date" value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
-                   className={cn(submitTried && !dataDostawy && "border-destructive field-invalid-pulse")} />
-            {submitTried && !dataDostawy && <FieldErr msg="Data dostawy / przyjazdu wymagana" />}
-          </div>
-          <div>
             <Label>Dostawca *</Label>
             <Combobox
               items={dostawcy}
@@ -834,6 +822,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                   if (k) setKrajZaladunkuQuery(k.label);
                 }
               }}
+              onBlurInput={() => {
+                setTimeout(() => {
+                  if (!dostawcaId && dostawcaQuery.trim()) {
+                    setDostawcaQuery("");
+                    triggerShake();
+                  }
+                }, 220);
+              }}
               placeholder="Wpisz nazwę dostawcy"
               invalid={submitTried && !dostawcaId}
             />
@@ -844,6 +840,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
               <p className="mt-1 text-xs text-muted-foreground">Kraj dostawcy: {supplierKrajLabel}</p>
             )}
           </div>
+
           <div>
             <Label>Kraj załadunku *</Label>
             <Combobox
@@ -863,11 +860,22 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 setKrajManuallySet(true);
                 setKrajAutofilledFromSupplier(null);
               }}
+              onBlurInput={() => {
+                setTimeout(() => {
+                  if (!krajId && krajZaladunkuQuery.trim()) {
+                    setKrajZaladunkuQuery("");
+                    triggerShake();
+                  }
+                }, 220);
+              }}
               placeholder="Wpisz nazwę kraju"
               invalid={submitTried && !krajId}
             />
             {submitTried && !krajId && (
               <FieldErr msg={krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany"} />
+            )}
+            {lettersOnlyError(krajZaladunkuQuery) && !krajId && (
+              <FieldErr msg="Dozwolone są tylko litery" />
             )}
             {selectedDostawca?.kraj_id && krajId !== selectedDostawca.kraj_id && (
               <Button type="button" variant="link" size="sm" className="px-0 h-auto" onClick={() => {
@@ -879,6 +887,35 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
               </Button>
             )}
           </div>
+
+          <div>
+            <Label>Data załadunku *</Label>
+            <Input type="date" min={todayStr} value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
+                   className={cn(submitTried && (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive field-invalid-pulse")} />
+            {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
+            {submitTried && dataZaladunku && dataZaladunku < todayStr && (
+              <FieldErr msg="Data załadunku nie może być wcześniejsza niż dzisiaj" />
+            )}
+          </div>
+
+          <div>
+            <Label>Data dostawy / przyjazdu *</Label>
+            <Input type="date" min={dataZaladunku || todayStr} value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
+                   className={cn(submitTried && (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive field-invalid-pulse")} />
+            {submitTried && !dataDostawy && <FieldErr msg="Data dostawy / przyjazdu wymagana" />}
+            {submitTried && dataDostawy && dataZaladunku && dataDostawy <= dataZaladunku && (
+              <FieldErr msg="Data dostawy musi być późniejsza niż data załadunku" />
+            )}
+          </div>
+
+          <div>
+            <Label>Szacunkowy koszt transportu za auto (€)</Label>
+            <Input type="number" disabled placeholder="—" />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Pole oczekuje na wdrożenie zaplecza (DB/RPC). Tymczasowo niedostępne.
+            </p>
+          </div>
+
           <div>
             <Label>Manager importu *</Label>
             <Select value={managerId} onValueChange={setManagerId} disabled={isImportMgr && !isSuper}>
@@ -891,12 +928,14 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
             </Select>
             {submitTried && !managerId && <FieldErr msg="Manager importu wymagany" />}
           </div>
+
           <div className="md:col-span-2">
-            <Label>Notatki</Label>
+            <Label>Notatki dostawy</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
         </CardContent>
       </Card>
+
 
       <Card className={cn("sticky top-2 z-20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80", capacityErrors.length > 0 && "border-destructive")}>
         <CardHeader><CardTitle>Wykorzystanie auta</CardTitle></CardHeader>
