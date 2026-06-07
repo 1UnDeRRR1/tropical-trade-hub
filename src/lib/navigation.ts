@@ -22,12 +22,13 @@ export interface NavItem {
   label: string;
   icon: ComponentType<{ className?: string }>;
   roles: string[]; // role keys allowed; super_admin always allowed
+  hidden?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
   { path: "/panel", label: "Panel główny", icon: LayoutDashboard, roles: ["kierownik", "asystent_kierownika", "import_manager", "sales_manager", "logistyk", "magazynier", "fakturowanie", "export_manager"] },
   { path: "/dostawy", label: "Dostawy", icon: Truck, roles: ["kierownik", "asystent_kierownika", "import_manager", "logistyk", "magazynier"] },
-  { path: "/sesje", label: "Sesje transportowe", icon: Container, roles: ["kierownik", "asystent_kierownika", "import_manager", "logistyk"] },
+  { path: "/sesje", label: "Sesje transportowe", icon: Container, roles: ["kierownik", "asystent_kierownika", "import_manager", "logistyk"], hidden: true },
   { path: "/logistyka", label: "Logistyka", icon: RouteIcon, roles: ["kierownik", "asystent_kierownika", "import_manager", "logistyk"] },
   { path: "/magazyn", label: "Magazyn", icon: Warehouse, roles: ["kierownik", "asystent_kierownika", "import_manager", "sales_manager", "magazynier"] },
   { path: "/sprzedaz", label: "Sprzedaż", icon: ShoppingCart, roles: ["kierownik", "asystent_kierownika", "sales_manager"] },
@@ -62,6 +63,7 @@ export function canAccess(path: string, roleKeys: string[]): boolean {
 }
 
 export function visibleNavItems(roleKeys: string[]): NavItem[] {
-  if (roleKeys.includes("super_admin")) return NAV_ITEMS;
-  return NAV_ITEMS.filter((i) => i.roles.some((r) => roleKeys.includes(r)));
+  const items = NAV_ITEMS.filter((i) => !i.hidden);
+  if (roleKeys.includes("super_admin")) return items;
+  return items.filter((i) => i.roles.some((r) => roleKeys.includes(r)));
 }
