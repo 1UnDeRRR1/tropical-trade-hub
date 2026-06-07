@@ -63,6 +63,7 @@ export function canAccess(path: string, roleKeys: string[]): boolean {
 }
 
 export function visibleNavItems(roleKeys: string[]): NavItem[] {
-  if (roleKeys.includes("super_admin")) return NAV_ITEMS;
-  return NAV_ITEMS.filter((i) => i.roles.some((r) => roleKeys.includes(r)));
+  const items = NAV_ITEMS.filter((i) => !i.hidden);
+  if (roleKeys.includes("super_admin")) return items;
+  return items.filter((i) => i.roles.some((r) => roleKeys.includes(r)));
 }
