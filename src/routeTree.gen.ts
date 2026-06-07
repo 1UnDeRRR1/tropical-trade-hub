@@ -33,6 +33,7 @@ import { Route as AuthenticatedDostawyIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedDostawyNowaRouteImport } from './routes/_authenticated/dostawy.nowa'
 import { Route as AuthenticatedSesjeIdIndexRouteImport } from './routes/_authenticated/sesje.$id.index'
 import { Route as AuthenticatedDostawyIdIndexRouteImport } from './routes/_authenticated/dostawy.$id.index'
+import { Route as AuthenticatedDostawyAutoNoweRouteImport } from './routes/_authenticated/dostawy.auto.nowe'
 import { Route as AuthenticatedDostawyIdEdytujRouteImport } from './routes/_authenticated/dostawy.$id.edytuj'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -163,6 +164,12 @@ const AuthenticatedDostawyIdIndexRoute =
     path: '/$id/',
     getParentRoute: () => AuthenticatedDostawyRoute,
   } as any)
+const AuthenticatedDostawyAutoNoweRoute =
+  AuthenticatedDostawyAutoNoweRouteImport.update({
+    id: '/auto/nowe',
+    path: '/auto/nowe',
+    getParentRoute: () => AuthenticatedDostawyRoute,
+  } as any)
 const AuthenticatedDostawyIdEdytujRoute =
   AuthenticatedDostawyIdEdytujRouteImport.update({
     id: '/$id/edytuj',
@@ -193,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/dostawy/': typeof AuthenticatedDostawyIndexRoute
   '/sesje/': typeof AuthenticatedSesjeIndexRoute
   '/dostawy/$id/edytuj': typeof AuthenticatedDostawyIdEdytujRoute
+  '/dostawy/auto/nowe': typeof AuthenticatedDostawyAutoNoweRoute
   '/dostawy/$id/': typeof AuthenticatedDostawyIdIndexRoute
   '/sesje/$id/': typeof AuthenticatedSesjeIdIndexRoute
 }
@@ -217,6 +225,7 @@ export interface FileRoutesByTo {
   '/dostawy': typeof AuthenticatedDostawyIndexRoute
   '/sesje': typeof AuthenticatedSesjeIndexRoute
   '/dostawy/$id/edytuj': typeof AuthenticatedDostawyIdEdytujRoute
+  '/dostawy/auto/nowe': typeof AuthenticatedDostawyAutoNoweRoute
   '/dostawy/$id': typeof AuthenticatedDostawyIdIndexRoute
   '/sesje/$id': typeof AuthenticatedSesjeIdIndexRoute
 }
@@ -245,6 +254,7 @@ export interface FileRoutesById {
   '/_authenticated/dostawy/': typeof AuthenticatedDostawyIndexRoute
   '/_authenticated/sesje/': typeof AuthenticatedSesjeIndexRoute
   '/_authenticated/dostawy/$id/edytuj': typeof AuthenticatedDostawyIdEdytujRoute
+  '/_authenticated/dostawy/auto/nowe': typeof AuthenticatedDostawyAutoNoweRoute
   '/_authenticated/dostawy/$id/': typeof AuthenticatedDostawyIdIndexRoute
   '/_authenticated/sesje/$id/': typeof AuthenticatedSesjeIdIndexRoute
 }
@@ -273,6 +283,7 @@ export interface FileRouteTypes {
     | '/dostawy/'
     | '/sesje/'
     | '/dostawy/$id/edytuj'
+    | '/dostawy/auto/nowe'
     | '/dostawy/$id/'
     | '/sesje/$id/'
   fileRoutesByTo: FileRoutesByTo
@@ -297,6 +308,7 @@ export interface FileRouteTypes {
     | '/dostawy'
     | '/sesje'
     | '/dostawy/$id/edytuj'
+    | '/dostawy/auto/nowe'
     | '/dostawy/$id'
     | '/sesje/$id'
   id:
@@ -324,6 +336,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dostawy/'
     | '/_authenticated/sesje/'
     | '/_authenticated/dostawy/$id/edytuj'
+    | '/_authenticated/dostawy/auto/nowe'
     | '/_authenticated/dostawy/$id/'
     | '/_authenticated/sesje/$id/'
   fileRoutesById: FileRoutesById
@@ -505,6 +518,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDostawyIdIndexRouteImport
       parentRoute: typeof AuthenticatedDostawyRoute
     }
+    '/_authenticated/dostawy/auto/nowe': {
+      id: '/_authenticated/dostawy/auto/nowe'
+      path: '/auto/nowe'
+      fullPath: '/dostawy/auto/nowe'
+      preLoaderRoute: typeof AuthenticatedDostawyAutoNoweRouteImport
+      parentRoute: typeof AuthenticatedDostawyRoute
+    }
     '/_authenticated/dostawy/$id/edytuj': {
       id: '/_authenticated/dostawy/$id/edytuj'
       path: '/$id/edytuj'
@@ -519,6 +539,7 @@ interface AuthenticatedDostawyRouteChildren {
   AuthenticatedDostawyNowaRoute: typeof AuthenticatedDostawyNowaRoute
   AuthenticatedDostawyIndexRoute: typeof AuthenticatedDostawyIndexRoute
   AuthenticatedDostawyIdEdytujRoute: typeof AuthenticatedDostawyIdEdytujRoute
+  AuthenticatedDostawyAutoNoweRoute: typeof AuthenticatedDostawyAutoNoweRoute
   AuthenticatedDostawyIdIndexRoute: typeof AuthenticatedDostawyIdIndexRoute
 }
 
@@ -526,6 +547,7 @@ const AuthenticatedDostawyRouteChildren: AuthenticatedDostawyRouteChildren = {
   AuthenticatedDostawyNowaRoute: AuthenticatedDostawyNowaRoute,
   AuthenticatedDostawyIndexRoute: AuthenticatedDostawyIndexRoute,
   AuthenticatedDostawyIdEdytujRoute: AuthenticatedDostawyIdEdytujRoute,
+  AuthenticatedDostawyAutoNoweRoute: AuthenticatedDostawyAutoNoweRoute,
   AuthenticatedDostawyIdIndexRoute: AuthenticatedDostawyIdIndexRoute,
 }
 
@@ -593,13 +615,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
