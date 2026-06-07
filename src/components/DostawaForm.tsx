@@ -458,9 +458,11 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const [krajAliases, setKrajAliases] = useState<Map<string, Set<string>>>(new Map());
   const [dostawcaAliases, setDostawcaAliases] = useState<Map<string, Set<string>>>(new Map());
 
-  const today = localTodayStr();
-  const [dataZaladunku, setDataZaladunku] = useState(existing?.data_zaladunku ?? today);
-  const [dataDostawy, setDataDostawy] = useState(existing?.data_dostawy ?? today);
+  // Dates: empty by default in create mode. User must enter manually.
+  // Validation requires both present and data_dostawy > data_zaladunku.
+  const [dataZaladunku, setDataZaladunku] = useState(existing?.data_zaladunku ?? "");
+  const [dataDostawy, setDataDostawy] = useState(existing?.data_dostawy ?? "");
+
   const [dostawcaId, setDostawcaId] = useState(existing?.dostawca_id ?? "");
   const [dostawcaQuery, setDostawcaQuery] = useState("");
   const [krajId, setKrajId] = useState(existing?.kraj_id ?? "");
