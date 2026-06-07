@@ -1221,94 +1221,99 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         </CardContent>
       </Card>
 
-      {mode === "create" && (
-        <Card>
-          <CardHeader><CardTitle>Transport</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label>Wstępny koszt transportu (€){isImportMgr && !isSuper && !isKierownik ? " *" : ""}</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={transportPrelim}
-                  onChange={(e) => setTransportPrelim(e.target.value)}
-                  placeholder="np. 2300"
-                  className={cn(
-                    submitTried && isImportMgr && !isSuper && !isKierownik
-                      && !(toNum(transportPrelim) ?? 0) && !(toNum(transportFinal) ?? 0)
-                      && "border-destructive",
-                    shouldPulse(
-                      "transport_cost",
-                      submitTried && isImportMgr && !isSuper && !isKierownik
-                        && !(toNum(transportPrelim) ?? 0) && !(toNum(transportFinal) ?? 0),
-                    ) && "field-invalid-pulse",
-                  )}
-                />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Koszt wykorzystywany do wstępnego rozliczenia, jeśli nie podano kosztu finalnego.
-                </p>
-              </div>
-              <div>
-                <Label>Finalny koszt transportu (€)</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={transportFinal}
-                  onChange={(e) => setTransportFinal(e.target.value)}
-                  placeholder="np. 2300"
-                />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Jeśli podany, ma priorytet w wyliczeniu kosztu własnego.
-                </p>
-              </div>
-            </div>
-
+      <Card>
+        <CardHeader><CardTitle>Transport</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <Label>Adres załadunku</Label>
-              <Textarea
-                value={adresZaladunku}
-                maxLength={300}
-                onChange={(e) => setAdresZaladunku(e.target.value)}
-                placeholder="Ulica, miasto, kraj"
-                rows={2}
-                className="resize-none overflow-hidden min-h-[40px]"
-                onInput={(e) => {
-                  const el = e.currentTarget;
-                  el.style.height = "auto";
-                  el.style.height = el.scrollHeight + "px";
-                }}
+              <Label>Wstępny koszt transportu (€) *</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={transportPrelim}
+                onChange={(e) => setTransportPrelim(e.target.value)}
+                placeholder="np. 2300"
+                disabled={mode === "edit"}
+                className={cn(
+                  mode === "create" && submitTried && !(toNum(transportPrelim) ?? 0) > 0
+                    && "border-destructive",
+                  shouldPulse(
+                    "transport_cost",
+                    mode === "create" && submitTried && !((toNum(transportPrelim) ?? 0) > 0),
+                  ) && "field-invalid-pulse",
+                )}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Wymagane do zapisu dostawy.
+              </p>
+            </div>
+            <div>
+              <Label>Finalny koszt transportu (€)</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={transportFinal}
+                onChange={(e) => setTransportFinal(e.target.value)}
+                placeholder="np. 2300"
+                disabled={mode === "edit"}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Jeśli podany, ma priorytet w wyliczeniu kosztu własnego.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <Label>Adres załadunku</Label>
+            <Textarea
+              value={adresZaladunku}
+              maxLength={300}
+              onChange={(e) => setAdresZaladunku(e.target.value)}
+              placeholder="Ulica, miasto, kraj"
+              rows={2}
+              disabled={mode === "edit"}
+              className="resize-none overflow-hidden min-h-[40px]"
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = el.scrollHeight + "px";
+              }}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label>Numer załadunku / reference</Label>
+              <Input
+                value={numerZaladunku}
+                maxLength={100}
+                onChange={(e) => setNumerZaladunku(e.target.value)}
+                placeholder="np. REF-12345"
+                disabled={mode === "edit"}
               />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label>Numer załadunku / reference</Label>
-                <Input
-                  value={numerZaladunku}
-                  maxLength={100}
-                  onChange={(e) => setNumerZaladunku(e.target.value)}
-                  placeholder="np. REF-12345"
-                />
-              </div>
-              <div>
-                <Label>Temperatura transportu</Label>
-                <Input
-                  value={temperaturaTransportu}
-                  maxLength={50}
-                  onChange={(e) => setTemperaturaTransportu(e.target.value)}
-                  placeholder="np. +2..+6 °C"
-                />
-              </div>
+            <div>
+              <Label>Temperatura transportu</Label>
+              <Input
+                value={temperaturaTransportu}
+                maxLength={50}
+                onChange={(e) => setTemperaturaTransportu(e.target.value)}
+                placeholder="np. +2..+6 °C"
+                disabled={mode === "edit"}
+              />
             </div>
+          </div>
 
-            {submitTried && isImportMgr && !isSuper && !isKierownik
-              && !(toNum(transportPrelim) ?? 0) && !(toNum(transportFinal) ?? 0) && (
-                <FieldErr msg="Wymagany jest wstępny lub finalny koszt transportu (> 0)." />
-              )}
-          </CardContent>
-        </Card>
-      )}
+          {mode === "create" && submitTried && !((toNum(transportPrelim) ?? 0) > 0) && (
+            <FieldErr msg="Wstępny koszt transportu (EUR) jest wymagany i musi być > 0." />
+          )}
+          {mode === "edit" && (
+            <p className="text-xs text-muted-foreground">
+              Edycja kosztów transportu i danych załadunku — w kolejnej fazie.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
 
 
