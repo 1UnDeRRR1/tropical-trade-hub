@@ -1510,6 +1510,37 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     {showErrs && <FieldErr msg={errs.material_tary} />}
                   </div>
 
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label>Klasa</Label>
+                      <Input
+                        value={p.klasa}
+                        maxLength={100}
+                        onChange={(e) => updateRow(i, { klasa: e.target.value })}
+                        placeholder="np. I"
+                      />
+                    </div>
+                    <div>
+                      <Label>Kaliber</Label>
+                      <Input
+                        value={p.kaliber}
+                        maxLength={100}
+                        onChange={(e) => updateRow(i, { kaliber: e.target.value })}
+                        placeholder="np. 70+"
+                      />
+                    </div>
+                    <div>
+                      <Label>Marka</Label>
+                      <Input
+                        value={p.marka}
+                        maxLength={100}
+                        onChange={(e) => updateRow(i, { marka: e.target.value })}
+                        placeholder="np. Brand"
+                      />
+                    </div>
+                  </div>
+
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label>Palety *</Label>
