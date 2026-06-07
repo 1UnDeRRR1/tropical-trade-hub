@@ -57,6 +57,9 @@ function Page() {
           opakowanie_custom_text: p.opakowanie_custom_text,
           material_tary: (p.material_tary as "karton"|"drewno"|"plastik"),
           kraj_id: p.kraj_id,
+          klasa: (p as { klasa?: string | null }).klasa ?? null,
+          kaliber: (p as { kaliber?: string | null }).kaliber ?? null,
+          marka: (p as { marka?: string | null }).marka ?? null,
           palety: Number(p.palety ?? 0),
           ilosc_opakowan: p.ilosc_opakowan == null ? null : Number(p.ilosc_opakowan),
           netto_kg: Number(p.netto_kg),
@@ -65,6 +68,7 @@ function Page() {
           waluta: p.waluta,
           notes: p.notes,
         })),
+
       });
       setLoading(false);
     })();
