@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
+import { computeKosztWlasnyPerKg, formatKosztWlasny } from "@/lib/koszt-wlasny";
 
 interface Dostawa {
   id: string;
