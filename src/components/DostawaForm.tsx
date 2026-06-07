@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -966,6 +967,9 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         brutto_kg: brutto as number,
         cena_zakupu: cena as number,
         waluta: p.waluta,
+        klasa: p.klasa.trim() || null,
+        kaliber: p.kaliber.trim() || null,
+        marka: p.marka.trim() || null,
         notes: p.notes || null,
       };
     });
@@ -1280,11 +1284,18 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
 
             <div>
               <Label>Adres załadunku</Label>
-              <Input
+              <Textarea
                 value={adresZaladunku}
                 maxLength={300}
                 onChange={(e) => setAdresZaladunku(e.target.value)}
                 placeholder="Ulica, miasto, kraj"
+                rows={2}
+                className="resize-none overflow-hidden min-h-[40px]"
+                onInput={(e) => {
+                  const el = e.currentTarget;
+                  el.style.height = "auto";
+                  el.style.height = el.scrollHeight + "px";
+                }}
               />
             </div>
 
@@ -1498,6 +1509,37 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     </div>
                     {showErrs && <FieldErr msg={errs.material_tary} />}
                   </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label>Klasa</Label>
+                      <Input
+                        value={p.klasa}
+                        maxLength={100}
+                        onChange={(e) => updateRow(i, { klasa: e.target.value })}
+                        placeholder="np. I"
+                      />
+                    </div>
+                    <div>
+                      <Label>Kaliber</Label>
+                      <Input
+                        value={p.kaliber}
+                        maxLength={100}
+                        onChange={(e) => updateRow(i, { kaliber: e.target.value })}
+                        placeholder="np. 70+"
+                      />
+                    </div>
+                    <div>
+                      <Label>Marka</Label>
+                      <Input
+                        value={p.marka}
+                        maxLength={100}
+                        onChange={(e) => updateRow(i, { marka: e.target.value })}
+                        placeholder="np. Brand"
+                      />
+                    </div>
+                  </div>
+
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
