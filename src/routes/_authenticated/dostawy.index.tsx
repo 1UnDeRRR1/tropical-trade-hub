@@ -138,18 +138,11 @@ function Page() {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <h1 className="text-2xl font-bold">Dostawy</h1>
           {canCreate && (
-            <div className="flex gap-2 flex-wrap">
-              <Button asChild variant="outline">
-                <Link to="/dostawy/auto/nowe">
-                  <Plus className="h-4 w-4" /> Utwórz auto
-                </Link>
-              </Button>
-              <Button asChild>
-                <Link to="/dostawy/nowa">
-                  <Plus className="h-4 w-4" /> Utwórz dostawę
-                </Link>
-              </Button>
-            </div>
+            <Button asChild>
+              <Link to="/dostawy/nowa">
+                <Plus className="h-4 w-4" /> Utwórz dostawę
+              </Link>
+            </Button>
           )}
         </div>
 
