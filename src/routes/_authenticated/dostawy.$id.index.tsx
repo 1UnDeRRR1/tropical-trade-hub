@@ -51,6 +51,9 @@ interface Pozycja {
   cena_zakupu: number;
   waluta: string;
   notes: string | null;
+  klasa: string | null;
+  kaliber: string | null;
+  marka: string | null;
 }
 
 function materialLabel(m: string): string {
@@ -288,15 +291,9 @@ function Page() {
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
                 <h1 className="text-2xl font-bold">Dostawa</h1>
-                {/^[A-Z0-9]+\/[0-9]{3}\/[A-Z]{3}\/[0-9]{3}$/.test(dostawa.numer_dostawy) ? (
-                  <p className="text-xs text-muted-foreground">
-                    Numer dostawy: <span className="font-mono">{dostawa.numer_dostawy}</span>
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Wewnętrzny numer systemowy / legacy: <span className="font-mono">{dostawa.numer_dostawy}</span>
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Numer dostawy: <span className="font-mono">{dostawa.numer_dostawy}</span>
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge status={dostawa.status} />
@@ -351,6 +348,7 @@ function Page() {
                         <TableHead className="w-10">#</TableHead>
                         <TableHead>Produkt</TableHead>
                         <TableHead>Odmiana</TableHead>
+                        <TableHead>Klasa / Kaliber / Marka</TableHead>
                         <TableHead>Opakowanie</TableHead>
                         <TableHead>Materiał tary</TableHead>
                         <TableHead>Kraj poch.</TableHead>
@@ -371,6 +369,7 @@ function Page() {
                             <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
                             <TableCell>{labels.produkty.get(p.produkt_id) ?? p.produkt_id}</TableCell>
                             <TableCell>{p.odmiana_id ? (labels.odmiany.get(p.odmiana_id) ?? p.odmiana_id) : "—"}</TableCell>
+                            <TableCell>{[p.klasa, p.kaliber, p.marka].filter(Boolean).join(" · ") || "—"}</TableCell>
                             <TableCell>
                               {opakLabel(p, labels.opakowania)}
                               {p.opakowanie_source === "custom" && (
@@ -419,6 +418,9 @@ function Page() {
                             : p.opakowanie_source === "none"
                               ? "Bez opakowania"
                               : opakLabel(p, labels.opakowania)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {[p.klasa, p.kaliber, p.marka].filter(Boolean).join(" · ") || "—"}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           Materiał tary: <strong>{materialLabel(p.material_tary)}</strong>
