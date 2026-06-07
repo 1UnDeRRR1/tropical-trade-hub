@@ -868,7 +868,10 @@ export type Database = {
           dostawa_id: string
           id: string
           ilosc_opakowan: number | null
+          kaliber: string | null
+          klasa: string | null
           kraj_id: string | null
+          marka: string | null
           material_tary: string
           netto_kg: number
           notes: string | null
@@ -889,7 +892,10 @@ export type Database = {
           dostawa_id: string
           id?: string
           ilosc_opakowan?: number | null
+          kaliber?: string | null
+          klasa?: string | null
           kraj_id?: string | null
+          marka?: string | null
           material_tary: string
           netto_kg: number
           notes?: string | null
@@ -910,7 +916,10 @@ export type Database = {
           dostawa_id?: string
           id?: string
           ilosc_opakowan?: number | null
+          kaliber?: string | null
+          klasa?: string | null
           kraj_id?: string | null
+          marka?: string | null
           material_tary?: string
           netto_kg?: number
           notes?: string | null
