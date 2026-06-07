@@ -175,6 +175,14 @@ Rules:
 - `SUM(pozycje_dostawy.palety) > 26`
 - `SUM(pozycje_dostawy.brutto_kg) > 21500`
 
+The authoritative capacity check is performed **after** all dostawy are
+created and linked to `sesja_id`, by aggregating the persisted
+`public.pozycje_dostawy` rows (joined on `dostawy.sesja_id = v_sesja_id`).
+The input-JSON pre-check is a fast-fail guard only; the final, binding
+totals come from what was actually written by
+`utworz_dostawe_z_pozycjami`. The RPC returns these DB-derived totals as
+`total_palety` and `total_brutto_kg`.
+
 ## Cost rule for `import_manager` at creation (Option A)
 
 `utworz_sesje_z_dostawami` accepts both `preliminary_transport_cost_eur`

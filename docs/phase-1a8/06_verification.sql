@@ -174,28 +174,69 @@ BEGIN
     RAISE EXCEPTION 'VERIFY FAIL: authenticated missing % on transport_sesje', v_text;
   END LOOP;
 
-  -- 6c. No EXECUTE on tt_next_numer_sesji for app users
-  IF EXISTS (
-    SELECT 1 FROM information_schema.role_routine_grants g
-    JOIN pg_proc p ON p.oid = (g.specific_schema || '.' || g.specific_name)::regprocedure
-    WHERE g.routine_schema='public'
-      AND g.routine_name='tt_next_numer_sesji'
-      AND g.privilege_type='EXECUTE'
-      AND g.grantee IN ('authenticated','anon','PUBLIC')
-  ) THEN RAISE EXCEPTION 'VERIFY FAIL: tt_next_numer_sesji is callable by app role'; END IF;
+  -- 6c/6d. Function EXECUTE grants verified via pg_proc + has_function_privilege
+  -- (information_schema specific_name casting is fragile; this is authoritative).
+  DECLARE
+    v_fn_oid oid;
+  BEGIN
+    -- tt_next_numer_sesji(int): internal helper — NOT callable by app users
+    SELECT p.oid INTO v_fn_oid
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.proname = 'tt_next_numer_sesji'
+       AND pg_get_function_identity_arguments(p.oid) = 'integer';
+    IF v_fn_oid IS NULL THEN
+      RAISE EXCEPTION 'VERIFY FAIL: tt_next_numer_sesji(int) not found for grant check';
+    END IF;
+    IF has_function_privilege('public',        v_fn_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'VERIFY FAIL: PUBLIC has EXECUTE on tt_next_numer_sesji(int)';
+    END IF;
+    IF has_function_privilege('anon',          v_fn_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'VERIFY FAIL: anon has EXECUTE on tt_next_numer_sesji(int)';
+    END IF;
+    IF has_function_privilege('authenticated', v_fn_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'VERIFY FAIL: authenticated has EXECUTE on tt_next_numer_sesji(int)';
+    END IF;
 
-  -- 6d. authenticated has EXECUTE on public RPCs
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.role_routine_grants
-    WHERE routine_schema='public' AND routine_name='utworz_sesje_z_dostawami'
-      AND privilege_type='EXECUTE' AND grantee='authenticated'
-  ) THEN RAISE EXCEPTION 'VERIFY FAIL: authenticated missing EXECUTE on utworz_sesje_z_dostawami'; END IF;
+    -- utworz_sesje_z_dostawami(jsonb,jsonb): public RPC — authenticated only
+    SELECT p.oid INTO v_fn_oid
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.proname = 'utworz_sesje_z_dostawami'
+       AND pg_get_function_identity_arguments(p.oid) = 'jsonb, jsonb';
+    IF v_fn_oid IS NULL THEN
+      RAISE EXCEPTION 'VERIFY FAIL: utworz_sesje_z_dostawami(jsonb,jsonb) not found for grant check';
+    END IF;
+    IF has_function_privilege('public', v_fn_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'VERIFY FAIL: PUBLIC has EXECUTE on utworz_sesje_z_dostawami(jsonb,jsonb)';
+    END IF;
+    IF has_function_privilege('anon', v_fn_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'VERIFY FAIL: anon has EXECUTE on utworz_sesje_z_dostawami(jsonb,jsonb)';
+    END IF;
+    IF NOT has_function_privilege('authenticated', v_fn_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'VERIFY FAIL: authenticated missing EXECUTE on utworz_sesje_z_dostawami(jsonb,jsonb)';
+    END IF;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.role_routine_grants
-    WHERE routine_schema='public' AND routine_name='ustaw_wstepny_koszt_transportu'
-      AND privilege_type='EXECUTE' AND grantee='authenticated'
-  ) THEN RAISE EXCEPTION 'VERIFY FAIL: authenticated missing EXECUTE on ustaw_wstepny_koszt_transportu'; END IF;
+    -- ustaw_wstepny_koszt_transportu(uuid,numeric): public RPC — authenticated only
+    SELECT p.oid INTO v_fn_oid
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.proname = 'ustaw_wstepny_koszt_transportu'
+       AND pg_get_function_identity_arguments(p.oid) = 'uuid, numeric';
+    IF v_fn_oid IS NULL THEN
+      RAISE EXCEPTION 'VERIFY FAIL: ustaw_wstepny_koszt_transportu(uuid,numeric) not found for grant check';
+    END IF;
+    IF has_function_privilege('public', v_fn_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'VERIFY FAIL: PUBLIC has EXECUTE on ustaw_wstepny_koszt_transportu(uuid,numeric)';
+    END IF;
+    IF has_function_privilege('anon', v_fn_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'VERIFY FAIL: anon has EXECUTE on ustaw_wstepny_koszt_transportu(uuid,numeric)';
+    END IF;
+    IF NOT has_function_privilege('authenticated', v_fn_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'VERIFY FAIL: authenticated missing EXECUTE on ustaw_wstepny_koszt_transportu(uuid,numeric)';
+    END IF;
+  END;
+
 
   ------------------------------------------------------------------
   -- 7. RLS enabled, expected policies present, no DELETE / no FOR ALL

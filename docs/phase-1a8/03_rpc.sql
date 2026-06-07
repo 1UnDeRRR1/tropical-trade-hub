@@ -281,6 +281,27 @@ BEGIN
     ));
   END LOOP;
 
+  -- ---------- 8. Post-create capacity verification from persisted rows ----------
+  -- Final capacity MUST reflect what was actually written to public.pozycje_dostawy
+  -- by utworz_dostawe_z_pozycjami, not only the raw input JSON. The JSON pre-check
+  -- above is a fast-fail guard; this is the authoritative check.
+  SELECT
+    COALESCE(SUM(pd.palety), 0),
+    COALESCE(SUM(pd.brutto_kg), 0)
+  INTO
+    v_total_palety,
+    v_total_brutto
+  FROM public.pozycje_dostawy pd
+  JOIN public.dostawy d ON d.id = pd.dostawa_id
+  WHERE d.sesja_id = v_sesja_id;
+
+  IF v_total_palety > 26 THEN
+    RAISE EXCEPTION 'Capacity FAIL (persisted): suma palet=% > 26', v_total_palety;
+  END IF;
+  IF v_total_brutto > 21500 THEN
+    RAISE EXCEPTION 'Capacity FAIL (persisted): suma brutto_kg=% > 21500', v_total_brutto;
+  END IF;
+
   RETURN jsonb_build_object(
     'sesja_id',       v_sesja_id,
     'numer_sesji',    v_numer_sesji,
@@ -288,6 +309,7 @@ BEGIN
     'total_palety',   v_total_palety,
     'total_brutto_kg',v_total_brutto
   );
+
 END
 $$;
 
