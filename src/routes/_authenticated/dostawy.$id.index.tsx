@@ -26,6 +26,10 @@ interface Dostawa {
   kraj_id: string | null;
   import_manager_id: string;
   notes: string | null;
+  adres_zaladunku: string | null;
+  numer_zaladunku: string | null;
+  temperatura_transportu: string | null;
+  sesja_id: string | null;
   created_at: string;
 }
 
