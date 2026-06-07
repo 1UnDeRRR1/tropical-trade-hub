@@ -193,12 +193,8 @@ BEGIN
   DECLARE
     v_fn_oid oid;
   BEGIN
-    -- tt_next_numer_sesji(int): internal helper — NOT callable by app users
-    SELECT p.oid INTO v_fn_oid
-      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'public'
-       AND p.proname = 'tt_next_numer_sesji'
-       AND pg_get_function_identity_arguments(p.oid) = 'integer';
+    -- tt_next_numer_sesji(integer): internal helper — NOT callable by app users
+    v_fn_oid := to_regprocedure('public.tt_next_numer_sesji(integer)')::oid;
     IF v_fn_oid IS NULL THEN
       RAISE EXCEPTION 'VERIFY FAIL: tt_next_numer_sesji(int) not found for grant check';
     END IF;
