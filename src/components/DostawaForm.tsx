@@ -907,7 +907,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     if (!dostawcaId) freshHeaderErrors.push(dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany");
     if (!krajId) freshHeaderErrors.push(krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany");
     if (!dataZaladunku) freshHeaderErrors.push("Data załadunku wymagana");
-    else if (dataZaladunku < todayStr) freshHeaderErrors.push("Data załadunku nie może być wcześniejsza niż dzisiaj");
+
     if (!dataDostawy) freshHeaderErrors.push("Data dostawy wymagana");
     else if (dataZaladunku && dataDostawy <= dataZaladunku) freshHeaderErrors.push("Data dostawy musi być późniejsza niż data załadunku");
     if (!managerId) freshHeaderErrors.push("Import manager wymagany");
