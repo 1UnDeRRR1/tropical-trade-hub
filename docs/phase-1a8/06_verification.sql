@@ -94,29 +94,43 @@ BEGIN
   ------------------------------------------------------------------
   -- 5. Functions: signatures + SECURITY DEFINER
   ------------------------------------------------------------------
-  -- tt_next_numer_sesji(int) SECDEF
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE n.nspname='public' AND p.proname='tt_next_numer_sesji'
-      AND pg_get_function_identity_arguments(p.oid)='integer'
-      AND p.prosecdef = true
-  ) THEN RAISE EXCEPTION 'VERIFY FAIL: tt_next_numer_sesji(int) SECDEF missing'; END IF;
+  -- Function existence + SECURITY DEFINER, looked up by regprocedure
+  -- (avoids fragile equality on pg_get_function_identity_arguments which
+  --  includes parameter names on some Postgres versions).
+  DECLARE
+    v_fn_oid oid;
+    v_secdef boolean;
+  BEGIN
+    -- tt_next_numer_sesji(integer)
+    v_fn_oid := to_regprocedure('public.tt_next_numer_sesji(integer)')::oid;
+    IF v_fn_oid IS NULL THEN
+      RAISE EXCEPTION 'VERIFY FAIL: tt_next_numer_sesji(integer) missing';
+    END IF;
+    SELECT p.prosecdef INTO v_secdef FROM pg_proc p WHERE p.oid = v_fn_oid;
+    IF v_secdef IS NOT TRUE THEN
+      RAISE EXCEPTION 'VERIFY FAIL: tt_next_numer_sesji(integer) is not SECURITY DEFINER';
+    END IF;
 
-  -- utworz_sesje_z_dostawami(jsonb,jsonb) SECDEF
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE n.nspname='public' AND p.proname='utworz_sesje_z_dostawami'
-      AND pg_get_function_identity_arguments(p.oid)='jsonb, jsonb'
-      AND p.prosecdef = true
-  ) THEN RAISE EXCEPTION 'VERIFY FAIL: utworz_sesje_z_dostawami(jsonb,jsonb) SECDEF missing'; END IF;
+    -- utworz_sesje_z_dostawami(jsonb,jsonb)
+    v_fn_oid := to_regprocedure('public.utworz_sesje_z_dostawami(jsonb,jsonb)')::oid;
+    IF v_fn_oid IS NULL THEN
+      RAISE EXCEPTION 'VERIFY FAIL: utworz_sesje_z_dostawami(jsonb,jsonb) missing';
+    END IF;
+    SELECT p.prosecdef INTO v_secdef FROM pg_proc p WHERE p.oid = v_fn_oid;
+    IF v_secdef IS NOT TRUE THEN
+      RAISE EXCEPTION 'VERIFY FAIL: utworz_sesje_z_dostawami(jsonb,jsonb) is not SECURITY DEFINER';
+    END IF;
 
-  -- ustaw_wstepny_koszt_transportu(uuid,numeric) SECDEF
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE n.nspname='public' AND p.proname='ustaw_wstepny_koszt_transportu'
-      AND pg_get_function_identity_arguments(p.oid)='uuid, numeric'
-      AND p.prosecdef = true
-  ) THEN RAISE EXCEPTION 'VERIFY FAIL: ustaw_wstepny_koszt_transportu(uuid,numeric) SECDEF missing'; END IF;
+    -- ustaw_wstepny_koszt_transportu(uuid,numeric)
+    v_fn_oid := to_regprocedure('public.ustaw_wstepny_koszt_transportu(uuid,numeric)')::oid;
+    IF v_fn_oid IS NULL THEN
+      RAISE EXCEPTION 'VERIFY FAIL: ustaw_wstepny_koszt_transportu(uuid,numeric) missing';
+    END IF;
+    SELECT p.prosecdef INTO v_secdef FROM pg_proc p WHERE p.oid = v_fn_oid;
+    IF v_secdef IS NOT TRUE THEN
+      RAISE EXCEPTION 'VERIFY FAIL: ustaw_wstepny_koszt_transportu(uuid,numeric) is not SECURITY DEFINER';
+    END IF;
+  END;
 
   -- trigger fns present
   IF NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
@@ -179,12 +193,8 @@ BEGIN
   DECLARE
     v_fn_oid oid;
   BEGIN
-    -- tt_next_numer_sesji(int): internal helper — NOT callable by app users
-    SELECT p.oid INTO v_fn_oid
-      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'public'
-       AND p.proname = 'tt_next_numer_sesji'
-       AND pg_get_function_identity_arguments(p.oid) = 'integer';
+    -- tt_next_numer_sesji(integer): internal helper — NOT callable by app users
+    v_fn_oid := to_regprocedure('public.tt_next_numer_sesji(integer)')::oid;
     IF v_fn_oid IS NULL THEN
       RAISE EXCEPTION 'VERIFY FAIL: tt_next_numer_sesji(int) not found for grant check';
     END IF;
@@ -199,11 +209,7 @@ BEGIN
     END IF;
 
     -- utworz_sesje_z_dostawami(jsonb,jsonb): public RPC — authenticated only
-    SELECT p.oid INTO v_fn_oid
-      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'public'
-       AND p.proname = 'utworz_sesje_z_dostawami'
-       AND pg_get_function_identity_arguments(p.oid) = 'jsonb, jsonb';
+    v_fn_oid := to_regprocedure('public.utworz_sesje_z_dostawami(jsonb,jsonb)')::oid;
     IF v_fn_oid IS NULL THEN
       RAISE EXCEPTION 'VERIFY FAIL: utworz_sesje_z_dostawami(jsonb,jsonb) not found for grant check';
     END IF;
@@ -218,11 +224,7 @@ BEGIN
     END IF;
 
     -- ustaw_wstepny_koszt_transportu(uuid,numeric): public RPC — authenticated only
-    SELECT p.oid INTO v_fn_oid
-      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'public'
-       AND p.proname = 'ustaw_wstepny_koszt_transportu'
-       AND pg_get_function_identity_arguments(p.oid) = 'uuid, numeric';
+    v_fn_oid := to_regprocedure('public.ustaw_wstepny_koszt_transportu(uuid,numeric)')::oid;
     IF v_fn_oid IS NULL THEN
       RAISE EXCEPTION 'VERIFY FAIL: ustaw_wstepny_koszt_transportu(uuid,numeric) not found for grant check';
     END IF;
