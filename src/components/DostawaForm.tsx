@@ -908,13 +908,12 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     if (!managerId) freshHeaderErrors.push("Import manager wymagany");
     if ((notes ?? "").length > 100) freshHeaderErrors.push("Komentarz: maksymalnie 100 znaków");
 
-    // Transport cost: import_manager (without staff override) must provide preliminary>0 OR final>0.
+    // Transport cost: Wstępny koszt transportu (EUR) is mandatory in create flow for all roles.
+    // Finalny koszt does NOT replace missing preliminary.
     const tPrelimNum = toNum(transportPrelim) ?? 0;
     const tFinalNum = toNum(transportFinal) ?? 0;
-    if (mode === "create" && isImportMgr && !isSuper && !isKierownik) {
-      if (!(tPrelimNum > 0) && !(tFinalNum > 0)) {
-        freshHeaderErrors.push("Wymagany jest wstępny lub finalny koszt transportu (> 0).");
-      }
+    if (mode === "create" && !(tPrelimNum > 0)) {
+      freshHeaderErrors.push("Wstępny koszt transportu (EUR) jest wymagany i musi być > 0.");
     }
     if (transportPrelim.trim() && !(tPrelimNum >= 0)) freshHeaderErrors.push("Wstępny koszt transportu: nieprawidłowa liczba.");
     if (transportFinal.trim() && !(tFinalNum >= 0)) freshHeaderErrors.push("Finalny koszt transportu: nieprawidłowa liczba.");
