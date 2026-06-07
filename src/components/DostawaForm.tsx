@@ -1284,11 +1284,18 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
 
             <div>
               <Label>Adres załadunku</Label>
-              <Input
+              <Textarea
                 value={adresZaladunku}
                 maxLength={300}
                 onChange={(e) => setAdresZaladunku(e.target.value)}
                 placeholder="Ulica, miasto, kraj"
+                rows={2}
+                className="resize-none overflow-hidden min-h-[40px]"
+                onInput={(e) => {
+                  const el = e.currentTarget;
+                  el.style.height = "auto";
+                  el.style.height = el.scrollHeight + "px";
+                }}
               />
             </div>
 
