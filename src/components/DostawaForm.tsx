@@ -501,6 +501,9 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           opakowanie_custom_text: p.opakowanie_custom_text ?? "",
           material_tary: p.material_tary,
           material_autofilled: false,
+          klasa: p.klasa ?? "",
+          kaliber: p.kaliber ?? "",
+          marka: p.marka ?? "",
           palety: String(p.palety ?? 0),
           ilosc_opakowan: p.ilosc_opakowan == null ? "" : String(p.ilosc_opakowan),
           netto_kg: String(p.netto_kg ?? ""),
@@ -512,6 +515,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         }))
       : [{ ...EMPTY_POZ }],
   );
+
   const [saving, setSaving] = useState(false);
   const [submitTried, setSubmitTried] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
