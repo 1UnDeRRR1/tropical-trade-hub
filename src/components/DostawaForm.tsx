@@ -120,6 +120,35 @@ function isBlank(s: string): boolean {
   return s === null || s === undefined || String(s).trim() === "";
 }
 
+// ---------- Koszt własny preview (owner formula, frontend-only) ----------
+// Inputs already validated > 0 by caller. Returns null if not computable.
+function computeKosztWlasnyPerKg(args: {
+  cena_zakupu_per_kg: number;
+  netto_kg: number;
+  brutto_kg: number;
+  palety: number;
+  transport_cost_eur: number;
+}): number | null {
+  const { cena_zakupu_per_kg, netto_kg, brutto_kg, palety, transport_cost_eur } = args;
+  if (!(palety > 0) || !(netto_kg > 0) || !(brutto_kg > 0) || !(transport_cost_eur > 0)) return null;
+  const netto_per_pallet = netto_kg / palety;
+  const brutto_per_pallet = brutto_kg / palety;
+  if (!(netto_per_pallet > 0)) return null;
+  let transport_per_kg: number;
+  if (brutto_per_pallet <= 826) {
+    const max_net_kg_in_auto = netto_per_pallet * 26;
+    if (!(max_net_kg_in_auto > 0)) return null;
+    transport_per_kg = transport_cost_eur / max_net_kg_in_auto;
+  } else {
+    const pallets_by_weight = Math.floor(21500 / brutto_per_pallet);
+    const pallets_fit = Math.min(26, pallets_by_weight);
+    if (!(pallets_fit > 0)) return null;
+    const transport_per_pallet = transport_cost_eur / pallets_fit;
+    transport_per_kg = transport_per_pallet / netto_per_pallet;
+  }
+  return cena_zakupu_per_kg + transport_per_kg + 0.02;
+}
+
 // ---------- Calculation engine ----------
 type ChangedField = "produkt"|"kraj"|"odmiana"|"opakowanie"|"material_tary"|"palety"|"ilosc_opakowan"|"netto_kg"|"brutto_kg"|"cena_zakupu"|"waluta"|"notes";
 interface PositionCalculation { next: PozycjaForm; standard: StandardRow | null; warnings: string[]; }
@@ -421,6 +450,15 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const [managerId, setManagerId] = useState(existing?.import_manager_id ?? "");
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [status, setStatus] = useState<"draft" | "planned">(existing?.status ?? "draft");
+
+  // Transport block (create mode only — persisted via utworz_sesje_z_dostawami).
+  // In edit mode transport fields are not editable here (BLOCKED — would require
+  // extending aktualizuj_dostawe_z_pozycjami; out of scope this phase).
+  const [transportPrelim, setTransportPrelim] = useState<string>("");
+  const [transportFinal, setTransportFinal] = useState<string>("");
+  const [adresZaladunku, setAdresZaladunku] = useState<string>("");
+  const [numerZaladunku, setNumerZaladunku] = useState<string>("");
+  const [temperaturaTransportu, setTemperaturaTransportu] = useState<string>("");
   const [pozycje, setPozycje] = useState<PozycjaForm[]>(
     existing
       ? existing.positions.map((p) => ({
@@ -853,13 +891,25 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     else if (dataZaladunku && dataDostawy <= dataZaladunku) freshHeaderErrors.push("Data dostawy musi być późniejsza niż data załadunku");
     if (!managerId) freshHeaderErrors.push("Import manager wymagany");
     if ((notes ?? "").length > 100) freshHeaderErrors.push("Komentarz: maksymalnie 100 znaków");
+
+    // Transport cost: import_manager (without staff override) must provide preliminary>0 OR final>0.
+    const tPrelimNum = toNum(transportPrelim) ?? 0;
+    const tFinalNum = toNum(transportFinal) ?? 0;
+    if (mode === "create" && isImportMgr && !isSuper && !isKierownik) {
+      if (!(tPrelimNum > 0) && !(tFinalNum > 0)) {
+        freshHeaderErrors.push("Wymagany jest wstępny lub finalny koszt transportu (> 0).");
+      }
+    }
+    if (transportPrelim.trim() && !(tPrelimNum >= 0)) freshHeaderErrors.push("Wstępny koszt transportu: nieprawidłowa liczba.");
+    if (transportFinal.trim() && !(tFinalNum >= 0)) freshHeaderErrors.push("Finalny koszt transportu: nieprawidłowa liczba.");
+
     const freshTotals = calculateTotals(pozycje);
     const freshCapacityErrors: string[] = [];
     if (freshTotals.palety > MAX_PALETY) freshCapacityErrors.push(`Łączna liczba palet ${freshTotals.palety} przekracza limit auta (${MAX_PALETY}).`);
     if (freshTotals.brutto > MAX_BRUTTO_KG) freshCapacityErrors.push(`Łączna waga brutto ${freshTotals.brutto.toFixed(2)} kg przekracza limit auta (${MAX_BRUTTO_KG} kg).`);
     if (freshHeaderErrors.length > 0 || freshCapacityErrors.length > 0 || freshLineErrors.some((e) => Object.keys(e).length > 0)) {
       setSubmitError("Formularz zawiera błędy. Popraw zaznaczone pola.");
-      triggerFailedSubmitFeedback(invalidFieldKeys(freshLineErrors));
+      triggerFailedSubmitFeedback([...invalidFieldKeys(freshLineErrors), "transport_cost"]);
       return;
     }
     setSaving(true);
@@ -910,19 +960,62 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
       if (rpcErr) { setSubmitError(rpcErr.message); return; }
       navigate({ to: "/dostawy/$id", params: { id: data as string } });
     } else {
-      const { data, error: rpcErr } = await supabase.rpc("utworz_dostawe_z_pozycjami", {
-        p_data_dostawy: dataDostawy,
-        p_data_zaladunku: dataZaladunku,
-        p_dostawca_id: dostawcaId,
-        p_kraj_id: krajId || "",
-        p_import_manager_id: managerId,
-        p_status: s,
-        p_notes: notes || "",
-        p_pozycje: payload,
-      });
-      setSaving(false);
-      if (rpcErr) { setSubmitError(rpcErr.message); return; }
-      navigate({ to: "/dostawy/$id", params: { id: data as string } });
+      // Create mode. Save path rule:
+      //   - if transport cost (preliminary > 0 OR final > 0) was entered →
+      //     use utworz_sesje_z_dostawami (hidden internal transport_sesje
+      //     persists transport cost + driver data; dostawa gets adres/numer/temp).
+      //   - otherwise → keep old utworz_dostawe_z_pozycjami path (staff w/o cost).
+      const useSessionPath = tPrelimNum > 0 || tFinalNum > 0;
+      if (useSessionPath) {
+        const p_sesja: Record<string, unknown> = {
+          import_manager_id: managerId,
+          waluta: "EUR",
+          status: s,
+        };
+        if (tPrelimNum > 0) p_sesja.preliminary_transport_cost_eur = tPrelimNum;
+        if (tFinalNum > 0) p_sesja.final_transport_cost_eur = tFinalNum;
+
+        const p_dostawy = [{
+          data_dostawy: dataDostawy,
+          data_zaladunku: dataZaladunku,
+          dostawca_id: dostawcaId,
+          kraj_id: krajId || "",
+          status: s,
+          notes: notes || "",
+          adres_zaladunku: adresZaladunku.trim() || null,
+          numer_zaladunku: numerZaladunku.trim() || null,
+          temperatura_transportu: temperaturaTransportu.trim() || null,
+          pozycje: payload,
+        }];
+
+        const { data, error: rpcErr } = await supabase.rpc("utworz_sesje_z_dostawami", {
+          p_sesja: p_sesja as never,
+          p_dostawy: p_dostawy as never,
+        });
+        setSaving(false);
+        if (rpcErr) { setSubmitError(rpcErr.message); return; }
+        const result = data as { dostawy?: Array<{ id: string }> } | null;
+        const firstId = result?.dostawy?.[0]?.id;
+        if (firstId) {
+          navigate({ to: "/dostawy/$id", params: { id: firstId } });
+        } else {
+          navigate({ to: "/dostawy" });
+        }
+      } else {
+        const { data, error: rpcErr } = await supabase.rpc("utworz_dostawe_z_pozycjami", {
+          p_data_dostawy: dataDostawy,
+          p_data_zaladunku: dataZaladunku,
+          p_dostawca_id: dostawcaId,
+          p_kraj_id: krajId || "",
+          p_import_manager_id: managerId,
+          p_status: s,
+          p_notes: notes || "",
+          p_pozycje: payload,
+        });
+        setSaving(false);
+        if (rpcErr) { setSubmitError(rpcErr.message); return; }
+        navigate({ to: "/dostawy/$id", params: { id: data as string } });
+      }
     }
   };
 
@@ -1092,6 +1185,90 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
 
         </CardContent>
       </Card>
+
+      {mode === "create" && (
+        <Card>
+          <CardHeader><CardTitle>Transport</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Wstępny koszt transportu (€){isImportMgr && !isSuper && !isKierownik ? " *" : ""}</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={transportPrelim}
+                  onChange={(e) => setTransportPrelim(e.target.value)}
+                  placeholder="np. 2300"
+                  className={cn(
+                    submitTried && isImportMgr && !isSuper && !isKierownik
+                      && !(toNum(transportPrelim) ?? 0) && !(toNum(transportFinal) ?? 0)
+                      && "border-destructive",
+                    shouldPulse(
+                      "transport_cost",
+                      submitTried && isImportMgr && !isSuper && !isKierownik
+                        && !(toNum(transportPrelim) ?? 0) && !(toNum(transportFinal) ?? 0),
+                    ) && "field-invalid-pulse",
+                  )}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Koszt wykorzystywany do wstępnego rozliczenia, jeśli nie podano kosztu finalnego.
+                </p>
+              </div>
+              <div>
+                <Label>Finalny koszt transportu (€)</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={transportFinal}
+                  onChange={(e) => setTransportFinal(e.target.value)}
+                  placeholder="np. 2300"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Jeśli podany, ma priorytet w wyliczeniu kosztu własnego.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <Label>Adres załadunku</Label>
+              <Input
+                value={adresZaladunku}
+                maxLength={300}
+                onChange={(e) => setAdresZaladunku(e.target.value)}
+                placeholder="Ulica, miasto, kraj"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Numer załadunku / reference</Label>
+                <Input
+                  value={numerZaladunku}
+                  maxLength={100}
+                  onChange={(e) => setNumerZaladunku(e.target.value)}
+                  placeholder="np. REF-12345"
+                />
+              </div>
+              <div>
+                <Label>Temperatura transportu</Label>
+                <Input
+                  value={temperaturaTransportu}
+                  maxLength={50}
+                  onChange={(e) => setTemperaturaTransportu(e.target.value)}
+                  placeholder="np. +2..+6 °C"
+                />
+              </div>
+            </div>
+
+            {submitTried && isImportMgr && !isSuper && !isKierownik
+              && !(toNum(transportPrelim) ?? 0) && !(toNum(transportFinal) ?? 0) && (
+                <FieldErr msg="Wymagany jest wstępny lub finalny koszt transportu (> 0)." />
+              )}
+          </CardContent>
+        </Card>
+      )}
+
+
 
 
       {/* Compact sticky capacity bar — one row, no large card/title.
@@ -1332,6 +1509,33 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                       );
                     })()}
                   </div>
+
+                  {mode === "create" && (() => {
+                    const cena = toNum(p.cena_zakupu);
+                    const netto = toNum(p.netto_kg);
+                    const brutto = toNum(p.brutto_kg);
+                    const palety = toNum(p.palety);
+                    const tFinal = toNum(transportFinal);
+                    const tPrelim = toNum(transportPrelim);
+                    const t = tFinal && tFinal > 0 ? tFinal : (tPrelim && tPrelim > 0 ? tPrelim : null);
+                    if (cena === null || netto === null || brutto === null || palety === null || t === null) return null;
+                    const kw = computeKosztWlasnyPerKg({
+                      cena_zakupu_per_kg: cena,
+                      netto_kg: netto,
+                      brutto_kg: brutto,
+                      palety,
+                      transport_cost_eur: t,
+                    });
+                    if (kw === null) return null;
+                    const formatted = kw.toLocaleString("pl-PL", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+                    return (
+                      <div className="rounded-md bg-muted/40 px-3 py-2 text-sm">
+                        Koszt własny: <strong>{formatted}</strong> €/kg
+                      </div>
+                    );
+                  })()}
+
+
 
                   <div>
                     <Label>Komentarz</Label>
