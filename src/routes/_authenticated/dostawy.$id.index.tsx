@@ -348,6 +348,7 @@ function Page() {
                         <TableHead className="w-10">#</TableHead>
                         <TableHead>Produkt</TableHead>
                         <TableHead>Odmiana</TableHead>
+                        <TableHead>Klasa / Kaliber / Marka</TableHead>
                         <TableHead>Opakowanie</TableHead>
                         <TableHead>Materiał tary</TableHead>
                         <TableHead>Kraj poch.</TableHead>
