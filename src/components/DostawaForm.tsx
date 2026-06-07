@@ -1131,6 +1131,90 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         </CardContent>
       </Card>
 
+      {mode === "create" && (
+        <Card>
+          <CardHeader><CardTitle>Transport</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Wstępny koszt transportu (€){isImportMgr && !isSuper && !isKierownik ? " *" : ""}</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={transportPrelim}
+                  onChange={(e) => setTransportPrelim(e.target.value)}
+                  placeholder="np. 2300"
+                  className={cn(
+                    submitTried && isImportMgr && !isSuper && !isKierownik
+                      && !(toNum(transportPrelim) ?? 0) && !(toNum(transportFinal) ?? 0)
+                      && "border-destructive",
+                    shouldPulse(
+                      "transport_cost",
+                      submitTried && isImportMgr && !isSuper && !isKierownik
+                        && !(toNum(transportPrelim) ?? 0) && !(toNum(transportFinal) ?? 0),
+                    ) && "field-invalid-pulse",
+                  )}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Koszt wykorzystywany do wstępnego rozliczenia, jeśli nie podano kosztu finalnego.
+                </p>
+              </div>
+              <div>
+                <Label>Finalny koszt transportu (€)</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={transportFinal}
+                  onChange={(e) => setTransportFinal(e.target.value)}
+                  placeholder="np. 2300"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Jeśli podany, ma priorytet w wyliczeniu kosztu własnego.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <Label>Adres załadunku</Label>
+              <Input
+                value={adresZaladunku}
+                maxLength={300}
+                onChange={(e) => setAdresZaladunku(e.target.value)}
+                placeholder="Ulica, miasto, kraj"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Numer załadunku / reference</Label>
+                <Input
+                  value={numerZaladunku}
+                  maxLength={100}
+                  onChange={(e) => setNumerZaladunku(e.target.value)}
+                  placeholder="np. REF-12345"
+                />
+              </div>
+              <div>
+                <Label>Temperatura transportu</Label>
+                <Input
+                  value={temperaturaTransportu}
+                  maxLength={50}
+                  onChange={(e) => setTemperaturaTransportu(e.target.value)}
+                  placeholder="np. +2..+6 °C"
+                />
+              </div>
+            </div>
+
+            {submitTried && isImportMgr && !isSuper && !isKierownik
+              && !(toNum(transportPrelim) ?? 0) && !(toNum(transportFinal) ?? 0) && (
+                <FieldErr msg="Wymagany jest wstępny lub finalny koszt transportu (> 0)." />
+              )}
+          </CardContent>
+        </Card>
+      )}
+
+
+
 
       {/* Compact sticky capacity bar — one row, no large card/title.
           AppShell header is sticky h-14 z-30 → offset top-14 so this bar
