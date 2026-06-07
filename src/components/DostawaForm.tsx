@@ -1317,39 +1317,6 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
 
 
 
-
-      {/* Compact sticky capacity bar — one row, no large card/title.
-          AppShell header is sticky h-14 z-30 → offset top-14 so this bar
-          sticks directly below header on mobile + desktop.
-          Dropdowns use z-50 and stay above this z-20 bar. */}
-      <div className={cn(
-        "sticky top-14 z-20 -mx-4 px-4 py-1.5 md:-mx-6 md:px-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b",
-        capacityErrors.length > 0 && "ring-1 ring-destructive",
-      )}>
-        <div className="flex flex-wrap gap-1.5 text-xs sm:text-sm">
-          <div className={cn(
-            "flex-1 min-w-0 rounded-md border bg-card px-2 py-1 truncate",
-            (totals.palety > MAX_PALETY || totals.brutto > MAX_BRUTTO_KG) && "border-destructive text-destructive",
-          )}>
-            <span className="text-muted-foreground">Załadowano:</span>{" "}
-            <span className="font-semibold tabular-nums">{totals.brutto.toFixed(0)} kg / {totals.palety} pal.</span>
-          </div>
-          <div className="flex-1 min-w-0 rounded-md border bg-card px-2 py-1 truncate">
-            <span className="text-muted-foreground">Wolne:</span>{" "}
-            <span className="font-semibold tabular-nums">
-              {Math.max(0, MAX_BRUTTO_KG - totals.brutto).toFixed(0)} kg / {Math.max(0, MAX_PALETY - totals.palety)} pal.
-            </span>
-          </div>
-        </div>
-        {capacityErrors.length > 0 && (
-          <div className="mt-1 text-destructive text-xs space-y-0.5">
-            {capacityErrors.map((m, i) => (
-              <div key={i} className="flex items-center gap-1"><AlertCircle className="h-3 w-3 shrink-0" /> <span className="truncate">{m}</span></div>
-            ))}
-          </div>
-        )}
-      </div>
-
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>Pozycje</CardTitle>
@@ -1358,6 +1325,37 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Sticky capacity bar — pinned inside Pozycje card so it follows
+              through every position while scrolling. Offset top-14 sits
+              directly below AppShell sticky header (h-14 z-30). */}
+          <div className={cn(
+            "sticky top-14 z-20 -mx-6 px-6 py-1.5 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b",
+            capacityErrors.length > 0 && "ring-1 ring-destructive",
+          )}>
+            <div className="flex flex-wrap gap-1.5 text-xs sm:text-sm">
+              <div className={cn(
+                "flex-1 min-w-0 rounded-md border bg-card px-2 py-1 truncate",
+                (totals.palety > MAX_PALETY || totals.brutto > MAX_BRUTTO_KG) && "border-destructive text-destructive",
+              )}>
+                <span className="text-muted-foreground">Załadowano:</span>{" "}
+                <span className="font-semibold tabular-nums">{totals.brutto.toFixed(0)} kg / {totals.palety} pal.</span>
+              </div>
+              <div className="flex-1 min-w-0 rounded-md border bg-card px-2 py-1 truncate">
+                <span className="text-muted-foreground">Wolne:</span>{" "}
+                <span className="font-semibold tabular-nums">
+                  {Math.max(0, MAX_BRUTTO_KG - totals.brutto).toFixed(0)} kg / {Math.max(0, MAX_PALETY - totals.palety)} pal.
+                </span>
+              </div>
+            </div>
+            {capacityErrors.length > 0 && (
+              <div className="mt-1 text-destructive text-xs space-y-0.5">
+                {capacityErrors.map((m, i) => (
+                  <div key={i} className="flex items-center gap-1"><AlertCircle className="h-3 w-3 shrink-0" /> <span className="truncate">{m}</span></div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {pozycje.map((p, i) => {
             const errs = lineErrors[i];
             const showErrs = submitTried;
