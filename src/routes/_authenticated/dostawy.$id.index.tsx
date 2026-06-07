@@ -434,6 +434,21 @@ function Page() {
                             Cena: <strong>{Number(p.cena_zakupu).toFixed(2)} {p.waluta}</strong>
                           </div>
                         )}
+                        {canSeeFinance && (() => {
+                          const t = transport ? (transport.final ?? transport.prelim) : null;
+                          const kw = t == null ? null : computeKosztWlasnyPerKg({
+                            cena_zakupu: Number(p.cena_zakupu),
+                            waluta: p.waluta,
+                            netto_kg: Number(p.netto_kg),
+                            transport_eur: t,
+                            total_netto_kg: pozycje.reduce((s, x) => s + Number(x.netto_kg || 0), 0),
+                          });
+                          return (
+                            <div className="text-xs">
+                              Koszt własny: <strong>{formatKosztWlasny(kw)} €/kg</strong>
+                            </div>
+                          );
+                        })()}
                         <div className="flex flex-wrap gap-1 pt-1">
                           <Badge variant="outline">Towar: {st?.stock_status ?? "—"}</Badge>
                           <Badge variant="outline">Rozliczenie: {st?.settlement_status ?? "—"}</Badge>
