@@ -967,6 +967,9 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         brutto_kg: brutto as number,
         cena_zakupu: cena as number,
         waluta: p.waluta,
+        klasa: p.klasa.trim() || null,
+        kaliber: p.kaliber.trim() || null,
+        marka: p.marka.trim() || null,
         notes: p.notes || null,
       };
     });
