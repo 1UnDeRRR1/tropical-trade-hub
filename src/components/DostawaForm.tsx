@@ -960,19 +960,62 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
       if (rpcErr) { setSubmitError(rpcErr.message); return; }
       navigate({ to: "/dostawy/$id", params: { id: data as string } });
     } else {
-      const { data, error: rpcErr } = await supabase.rpc("utworz_dostawe_z_pozycjami", {
-        p_data_dostawy: dataDostawy,
-        p_data_zaladunku: dataZaladunku,
-        p_dostawca_id: dostawcaId,
-        p_kraj_id: krajId || "",
-        p_import_manager_id: managerId,
-        p_status: s,
-        p_notes: notes || "",
-        p_pozycje: payload,
-      });
-      setSaving(false);
-      if (rpcErr) { setSubmitError(rpcErr.message); return; }
-      navigate({ to: "/dostawy/$id", params: { id: data as string } });
+      // Create mode. Save path rule:
+      //   - if transport cost (preliminary > 0 OR final > 0) was entered →
+      //     use utworz_sesje_z_dostawami (hidden internal transport_sesje
+      //     persists transport cost + driver data; dostawa gets adres/numer/temp).
+      //   - otherwise → keep old utworz_dostawe_z_pozycjami path (staff w/o cost).
+      const useSessionPath = tPrelimNum > 0 || tFinalNum > 0;
+      if (useSessionPath) {
+        const p_sesja: Record<string, unknown> = {
+          import_manager_id: managerId,
+          waluta: "EUR",
+          status: s,
+        };
+        if (tPrelimNum > 0) p_sesja.preliminary_transport_cost_eur = tPrelimNum;
+        if (tFinalNum > 0) p_sesja.final_transport_cost_eur = tFinalNum;
+
+        const p_dostawy = [{
+          data_dostawy: dataDostawy,
+          data_zaladunku: dataZaladunku,
+          dostawca_id: dostawcaId,
+          kraj_id: krajId || "",
+          status: s,
+          notes: notes || "",
+          adres_zaladunku: adresZaladunku.trim() || null,
+          numer_zaladunku: numerZaladunku.trim() || null,
+          temperatura_transportu: temperaturaTransportu.trim() || null,
+          pozycje: payload,
+        }];
+
+        const { data, error: rpcErr } = await supabase.rpc("utworz_sesje_z_dostawami", {
+          p_sesja,
+          p_dostawy,
+        });
+        setSaving(false);
+        if (rpcErr) { setSubmitError(rpcErr.message); return; }
+        const result = data as { dostawy?: Array<{ id: string }> } | null;
+        const firstId = result?.dostawy?.[0]?.id;
+        if (firstId) {
+          navigate({ to: "/dostawy/$id", params: { id: firstId } });
+        } else {
+          navigate({ to: "/dostawy" });
+        }
+      } else {
+        const { data, error: rpcErr } = await supabase.rpc("utworz_dostawe_z_pozycjami", {
+          p_data_dostawy: dataDostawy,
+          p_data_zaladunku: dataZaladunku,
+          p_dostawca_id: dostawcaId,
+          p_kraj_id: krajId || "",
+          p_import_manager_id: managerId,
+          p_status: s,
+          p_notes: notes || "",
+          p_pozycje: payload,
+        });
+        setSaving(false);
+        if (rpcErr) { setSubmitError(rpcErr.message); return; }
+        navigate({ to: "/dostawy/$id", params: { id: data as string } });
+      }
     }
   };
 
