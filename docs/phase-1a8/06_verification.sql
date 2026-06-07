@@ -166,27 +166,50 @@ BEGIN
   END LOOP;
 
   ------------------------------------------------------------------
-  -- 6. Grants
-  -- 6a. No DELETE grant on transport_sesje for authenticated/anon/PUBLIC
+  -- 6. Grants (authoritative checks; information_schema.role_table_grants
+  --    is filtered by current role and is not reliable here).
+  -- 6a. authenticated effective privileges: SELECT/INSERT/UPDATE = true, DELETE = false
   ------------------------------------------------------------------
-  IF EXISTS (
-    SELECT 1 FROM information_schema.role_table_grants
-    WHERE table_schema='public' AND table_name='transport_sesje'
-      AND privilege_type='DELETE'
-      AND grantee IN ('authenticated','anon','PUBLIC')
-  ) THEN RAISE EXCEPTION 'VERIFY FAIL: DELETE grant on transport_sesje to app role'; END IF;
+  IF NOT has_table_privilege('authenticated', 'public.transport_sesje', 'SELECT') THEN
+    RAISE EXCEPTION 'VERIFY FAIL: authenticated missing SELECT on transport_sesje';
+  END IF;
+  IF NOT has_table_privilege('authenticated', 'public.transport_sesje', 'INSERT') THEN
+    RAISE EXCEPTION 'VERIFY FAIL: authenticated missing INSERT on transport_sesje';
+  END IF;
+  IF NOT has_table_privilege('authenticated', 'public.transport_sesje', 'UPDATE') THEN
+    RAISE EXCEPTION 'VERIFY FAIL: authenticated missing UPDATE on transport_sesje';
+  END IF;
+  IF has_table_privilege('authenticated', 'public.transport_sesje', 'DELETE') THEN
+    RAISE EXCEPTION 'VERIFY FAIL: authenticated has DELETE on transport_sesje';
+  END IF;
 
-  -- 6b. authenticated has SELECT/INSERT/UPDATE
-  FOR v_text IN
-    SELECT need FROM unnest(ARRAY['SELECT','INSERT','UPDATE']) AS need
-    WHERE NOT EXISTS (
-      SELECT 1 FROM information_schema.role_table_grants
-      WHERE table_schema='public' AND table_name='transport_sesje'
-        AND privilege_type=need AND grantee='authenticated'
-    )
-  LOOP
-    RAISE EXCEPTION 'VERIFY FAIL: authenticated missing % on transport_sesje', v_text;
-  END LOOP;
+  -- 6b. anon effective privileges: all false
+  IF has_table_privilege('anon', 'public.transport_sesje', 'SELECT') THEN
+    RAISE EXCEPTION 'VERIFY FAIL: anon has SELECT on transport_sesje';
+  END IF;
+  IF has_table_privilege('anon', 'public.transport_sesje', 'INSERT') THEN
+    RAISE EXCEPTION 'VERIFY FAIL: anon has INSERT on transport_sesje';
+  END IF;
+  IF has_table_privilege('anon', 'public.transport_sesje', 'UPDATE') THEN
+    RAISE EXCEPTION 'VERIFY FAIL: anon has UPDATE on transport_sesje';
+  END IF;
+  IF has_table_privilege('anon', 'public.transport_sesje', 'DELETE') THEN
+    RAISE EXCEPTION 'VERIFY FAIL: anon has DELETE on transport_sesje';
+  END IF;
+
+  -- 6a-bis. PUBLIC ACL must be empty on transport_sesje
+  IF EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) a
+    WHERE n.nspname = 'public'
+      AND c.relname = 'transport_sesje'
+      AND a.grantee = 0
+  ) THEN
+    RAISE EXCEPTION 'VERIFY FAIL: PUBLIC ACL privileges present on transport_sesje';
+  END IF;
+
 
   -- 6c/6d. Function EXECUTE grants verified via pg_proc + has_function_privilege
   -- (information_schema specific_name casting is fragile; this is authoritative).
