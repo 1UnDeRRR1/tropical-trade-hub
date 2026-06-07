@@ -42,7 +42,8 @@ function Page() {
   const { profile, roleKeys } = useCurrentProfile();
   const isSuper = roleKeys.includes("super_admin");
   const isImportMgr = roleKeys.includes("import_manager");
-  const canCreate = isSuper || isImportMgr;
+  const isKierownik = roleKeys.includes("kierownik");
+  const canCreate = isSuper || isImportMgr || isKierownik;
 
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
