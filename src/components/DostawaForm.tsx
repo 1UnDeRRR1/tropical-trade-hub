@@ -392,6 +392,11 @@ export interface ExistingDostawa {
   kraj_id: string | null;
   import_manager_id: string;
   notes: string | null;
+  adres_zaladunku?: string | null;
+  numer_zaladunku?: string | null;
+  temperatura_transportu?: string | null;
+  transport_prelim_eur?: number | null;
+  transport_final_eur?: number | null;
   positions: Array<{
     id: string;
     produkt_id: string;
