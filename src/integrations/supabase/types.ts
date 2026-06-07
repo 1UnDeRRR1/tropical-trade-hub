@@ -283,6 +283,7 @@ export type Database = {
           kraj_id: string | null
           notes: string | null
           numer_dostawy: string
+          sesja_id: string | null
           status: string
           updated_at: string
         }
@@ -297,6 +298,7 @@ export type Database = {
           kraj_id?: string | null
           notes?: string | null
           numer_dostawy: string
+          sesja_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -311,6 +313,7 @@ export type Database = {
           kraj_id?: string | null
           notes?: string | null
           numer_dostawy?: string
+          sesja_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -335,6 +338,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "kraje"
             referencedColumns: ["kraj_id"]
+          },
+          {
+            foreignKeyName: "dostawy_sesja_id_fkey"
+            columns: ["sesja_id"]
+            isOneToOne: false
+            referencedRelation: "transport_sesje"
+            referencedColumns: ["sesja_id"]
           },
         ]
       }
@@ -1402,6 +1412,78 @@ export type Database = {
         }
         Relationships: []
       }
+      transport_sesje: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          eta: string | null
+          etd: string | null
+          final_locked_at: string | null
+          final_transport_cost_eur: number | null
+          import_manager_id: string
+          notes: string | null
+          numer_auta: string | null
+          numer_sesji: string
+          preliminary_transport_cost_eur: number | null
+          przewoznik_id: string | null
+          sesja_id: string
+          status: string
+          updated_at: string
+          waluta: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          eta?: string | null
+          etd?: string | null
+          final_locked_at?: string | null
+          final_transport_cost_eur?: number | null
+          import_manager_id: string
+          notes?: string | null
+          numer_auta?: string | null
+          numer_sesji: string
+          preliminary_transport_cost_eur?: number | null
+          przewoznik_id?: string | null
+          sesja_id?: string
+          status?: string
+          updated_at?: string
+          waluta?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          eta?: string | null
+          etd?: string | null
+          final_locked_at?: string | null
+          final_transport_cost_eur?: number | null
+          import_manager_id?: string
+          notes?: string | null
+          numer_auta?: string | null
+          numer_sesji?: string
+          preliminary_transport_cost_eur?: number | null
+          przewoznik_id?: string | null
+          sesja_id?: string
+          status?: string
+          updated_at?: string
+          waluta?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_sesje_import_manager_id_fkey"
+            columns: ["import_manager_id"]
+            isOneToOne: false
+            referencedRelation: "uzytkownicy"
+            referencedColumns: ["uzytkownik_id"]
+          },
+          {
+            foreignKeyName: "transport_sesje_przewoznik_id_fkey"
+            columns: ["przewoznik_id"]
+            isOneToOne: false
+            referencedRelation: "przewoznicy"
+            referencedColumns: ["przewoznik_id"]
+          },
+        ]
+      }
       typy_palet: {
         Row: {
           created_at: string
@@ -1541,7 +1623,50 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_koszt_wlasny_pozycji: {
+        Row: {
+          brutto_kg: number | null
+          cena_zakupu: number | null
+          dostawa_id: string | null
+          final_transport_cost_eur: number | null
+          koszt_wlasny_1kg: number | null
+          netto_kg: number | null
+          numer_sesji: string | null
+          palety: number | null
+          position_id: string | null
+          pozycja_dostawy_id: string | null
+          preliminary_transport_cost_eur: number | null
+          sesja_id: string | null
+          total_brutto_session: number | null
+          transport_cost_auto: number | null
+          transport_per_net_kg: number | null
+          transport_share_position: number | null
+          waluta: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dostawy_sesja_id_fkey"
+            columns: ["sesja_id"]
+            isOneToOne: false
+            referencedRelation: "transport_sesje"
+            referencedColumns: ["sesja_id"]
+          },
+          {
+            foreignKeyName: "pozycje_dostawy_dostawa_id_fkey"
+            columns: ["dostawa_id"]
+            isOneToOne: false
+            referencedRelation: "dostawy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pozycje_pozycja_dostawy_id_fkey"
+            columns: ["pozycja_dostawy_id"]
+            isOneToOne: true
+            referencedRelation: "pozycje_dostawy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _gen_business_numer: {
@@ -1582,6 +1707,11 @@ export type Database = {
         Args: { _prefix: string; _year: number }
         Returns: number
       }
+      tt_next_numer_sesji: { Args: { p_year: number }; Returns: string }
+      ustaw_wstepny_koszt_transportu: {
+        Args: { p_koszt: number; p_sesja_id: string }
+        Returns: Json
+      }
       utworz_dostawe_z_pozycjami: {
         Args: {
           p_data_dostawy: string
@@ -1594,6 +1724,10 @@ export type Database = {
           p_status: string
         }
         Returns: string
+      }
+      utworz_sesje_z_dostawami: {
+        Args: { p_dostawy: Json; p_sesja: Json }
+        Returns: Json
       }
     }
     Enums: {
