@@ -128,19 +128,28 @@ FK → `transport_sesje(sesja_id)` `ON DELETE SET NULL`, with index
 
 `import_manager` can `INSERT` and `UPDATE` own session directly (see
 `05_rls.sql`). Structural / system fields are protected at the DB level by
-trigger `tt_transport_sesje_protect_invariants` so that direct `UPDATE`
-cannot change:
+trigger `tt_transport_sesje_protect_invariants` (BEFORE UPDATE) so that
+direct `UPDATE` cannot change any of:
 
 - `sesja_id`
 - `numer_sesji`
 - `import_manager_id`
 - `created_by`
 - `created_at`
+- `waluta` (EUR-only in Phase 1A)
+- `final_locked_at` (system-managed; only stamped automatically by
+  `tt_lock_final_cost` when `final_transport_cost_eur` goes from NULL to a
+  value)
 
-Allowed business fields on own session: `numer_auta`, `przewoznik_id`,
-`etd`, `eta`, `preliminary_transport_cost_eur`, `final_transport_cost_eur`
-(first set only — locked thereafter by `tt_lock_final_cost`), `notes`,
-`status` (within `'draft' | 'planned' | 'in_transit' | 'delivered'`).
+The protection trigger applies to ALL non-`service_role` callers (import_manager,
+logistyk, staff). Operational corrections that need to bypass it use
+`service_role` explicitly.
+
+Fields `import_manager` (and staff) MAY change directly on own session
+(subject to RLS): `numer_auta`, `przewoznik_id`, `etd`, `eta`,
+`preliminary_transport_cost_eur`, `final_transport_cost_eur` (first set
+only — locked thereafter by `tt_lock_final_cost`), `notes`, `status`
+(within `'draft' | 'planned' | 'in_transit' | 'delivered'`).
 
 No DELETE is granted to `authenticated` or `anon`. No `FOR ALL` policy.
 

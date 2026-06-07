@@ -102,6 +102,16 @@ BEGIN
     IF NEW.created_at IS DISTINCT FROM OLD.created_at THEN
       RAISE EXCEPTION 'transport_sesje.created_at is immutable';
     END IF;
+    -- waluta is EUR-only in Phase 1A; direct change blocked
+    IF NEW.waluta IS DISTINCT FROM OLD.waluta THEN
+      RAISE EXCEPTION 'transport_sesje.waluta is immutable in Phase 1A (EUR only)';
+    END IF;
+    -- final_locked_at is system-managed by tt_lock_final_cost; direct change blocked
+    IF NEW.final_locked_at IS DISTINCT FROM OLD.final_locked_at
+       AND NOT (OLD.final_locked_at IS NULL AND NEW.final_transport_cost_eur IS NOT NULL
+                AND OLD.final_transport_cost_eur IS NULL) THEN
+      RAISE EXCEPTION 'transport_sesje.final_locked_at is system-managed (set automatically when final cost is first written)';
+    END IF;
   END IF;
   RETURN NEW;
 END

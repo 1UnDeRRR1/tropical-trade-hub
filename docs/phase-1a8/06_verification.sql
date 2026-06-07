@@ -137,6 +137,20 @@ BEGIN
       AND NOT tgisinternal
   ) THEN RAISE EXCEPTION 'VERIFY FAIL: trg_transport_sesje_protect_invariants missing on transport_sesje'; END IF;
 
+  -- invariant function body covers all protected columns (text check)
+  FOR v_text IN
+    SELECT col FROM unnest(ARRAY[
+      'sesja_id','numer_sesji','import_manager_id','created_by','created_at','waluta','final_locked_at'
+    ]) AS col
+    WHERE NOT EXISTS (
+      SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+      WHERE n.nspname='public' AND p.proname='tt_transport_sesje_protect_invariants'
+        AND pg_get_functiondef(p.oid) LIKE '%NEW.'||col||' IS DISTINCT FROM OLD.'||col||'%'
+    )
+  LOOP
+    RAISE EXCEPTION 'VERIFY FAIL: tt_transport_sesje_protect_invariants does not guard column %', v_text;
+  END LOOP;
+
   ------------------------------------------------------------------
   -- 6. Grants
   -- 6a. No DELETE grant on transport_sesje for authenticated/anon/PUBLIC
