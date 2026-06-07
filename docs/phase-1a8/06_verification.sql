@@ -251,7 +251,6 @@ BEGIN
       'transport_sesje_select_full',
       'transport_sesje_select_import_manager_own',
       'transport_sesje_insert_staff',
-      'transport_sesje_insert_import_manager_own',
       'transport_sesje_update_staff',
       'transport_sesje_update_import_manager_own'
     ]) AS expected
@@ -262,6 +261,13 @@ BEGIN
   LOOP
     RAISE EXCEPTION 'VERIFY FAIL: policy missing: %', v_text;
   END LOOP;
+
+  -- import_manager direct INSERT must NOT exist (creation is RPC-only)
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname='public' AND tablename='transport_sesje'
+      AND policyname = 'transport_sesje_insert_import_manager_own'
+  ) THEN RAISE EXCEPTION 'VERIFY FAIL: transport_sesje_insert_import_manager_own must not exist'; END IF;
 
   IF EXISTS (
     SELECT 1 FROM pg_policies

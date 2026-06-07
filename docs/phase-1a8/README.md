@@ -126,10 +126,18 @@ FK → `transport_sesje(sesja_id)` `ON DELETE SET NULL`, with index
 
 ### Write model & invariants
 
-`import_manager` can `INSERT` and `UPDATE` own session directly (see
-`05_rls.sql`). Structural / system fields are protected at the DB level by
-trigger `tt_transport_sesje_protect_invariants` (BEFORE UPDATE) so that
-direct `UPDATE` cannot change any of:
+`import_manager` creates a transport session **only through the RPC**
+`utworz_sesje_z_dostawami(p_sesja, p_dostawy)`. Direct `INSERT` into
+`public.transport_sesje` is not granted to `import_manager` — an empty/orphan
+session would bypass the complete workflow (N dostawy, numer_dostawy,
+capacity check, EUR validation, linked totals).
+
+Direct `UPDATE` of own session is allowed for operational business fields
+(`numer_auta`, `przewoznik_id`, `etd`, `eta`, `preliminary_transport_cost_eur`,
+`final_transport_cost_eur` first set only, `notes`, `status`).
+Structural / system fields are protected at the DB level by trigger
+`tt_transport_sesje_protect_invariants` (BEFORE UPDATE) so that direct
+`UPDATE` cannot change any of:
 
 - `sesja_id`
 - `numer_sesji`
