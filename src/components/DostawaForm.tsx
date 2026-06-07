@@ -1586,7 +1586,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     })()}
                   </div>
 
-                  {mode === "create" && (() => {
+                  {(() => {
                     const cena = toNum(p.cena_zakupu);
                     const netto = toNum(p.netto_kg);
                     const brutto = toNum(p.brutto_kg);
@@ -1594,19 +1594,18 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     const tFinal = toNum(transportFinal);
                     const tPrelim = toNum(transportPrelim);
                     const t = tFinal && tFinal > 0 ? tFinal : (tPrelim && tPrelim > 0 ? tPrelim : null);
-                    if (cena === null || netto === null || brutto === null || palety === null || t === null) return null;
-                    const kw = computeKosztWlasnyPerKg({
-                      cena_zakupu_per_kg: cena,
-                      netto_kg: netto,
-                      brutto_kg: brutto,
-                      palety,
-                      transport_cost_eur: t,
-                    });
-                    if (kw === null) return null;
-                    const formatted = kw.toLocaleString("pl-PL", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+                    const kw = (cena === null || netto === null || brutto === null || palety === null || t === null)
+                      ? null
+                      : computeKosztWlasnyPerKg({
+                          cena_zakupu_per_kg: cena,
+                          netto_kg: netto,
+                          brutto_kg: brutto,
+                          palety,
+                          transport_cost_eur: t,
+                        });
                     return (
                       <div className="rounded-md bg-muted/40 px-3 py-2 text-sm">
-                        Koszt własny: <strong>{formatted}</strong> €/kg
+                        Koszt własny: <strong>{formatKosztWlasny(kw)}</strong> €/kg
                       </div>
                     );
                   })()}
