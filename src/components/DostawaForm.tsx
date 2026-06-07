@@ -989,8 +989,8 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         }];
 
         const { data, error: rpcErr } = await supabase.rpc("utworz_sesje_z_dostawami", {
-          p_sesja,
-          p_dostawy,
+          p_sesja: p_sesja as never,
+          p_dostawy: p_dostawy as never,
         });
         setSaving(false);
         if (rpcErr) { setSubmitError(rpcErr.message); return; }
