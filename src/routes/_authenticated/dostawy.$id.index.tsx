@@ -51,6 +51,9 @@ interface Pozycja {
   cena_zakupu: number;
   waluta: string;
   notes: string | null;
+  klasa: string | null;
+  kaliber: string | null;
+  marka: string | null;
 }
 
 function materialLabel(m: string): string {
