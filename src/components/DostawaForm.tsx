@@ -421,6 +421,15 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const [managerId, setManagerId] = useState(existing?.import_manager_id ?? "");
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [status, setStatus] = useState<"draft" | "planned">(existing?.status ?? "draft");
+
+  // Transport block (create mode only — persisted via utworz_sesje_z_dostawami).
+  // In edit mode transport fields are not editable here (BLOCKED — would require
+  // extending aktualizuj_dostawe_z_pozycjami; out of scope this phase).
+  const [transportPrelim, setTransportPrelim] = useState<string>("");
+  const [transportFinal, setTransportFinal] = useState<string>("");
+  const [adresZaladunku, setAdresZaladunku] = useState<string>("");
+  const [numerZaladunku, setNumerZaladunku] = useState<string>("");
+  const [temperaturaTransportu, setTemperaturaTransportu] = useState<string>("");
   const [pozycje, setPozycje] = useState<PozycjaForm[]>(
     existing
       ? existing.positions.map((p) => ({
