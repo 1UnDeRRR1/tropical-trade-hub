@@ -1235,7 +1235,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                 placeholder="np. 2300"
                 disabled={mode === "edit"}
                 className={cn(
-                  mode === "create" && submitTried && !(toNum(transportPrelim) ?? 0) > 0
+                  mode === "create" && submitTried && !((toNum(transportPrelim) ?? 0) > 0)
                     && "border-destructive",
                   shouldPulse(
                     "transport_cost",
