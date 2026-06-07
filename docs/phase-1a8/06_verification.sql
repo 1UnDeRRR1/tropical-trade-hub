@@ -209,11 +209,7 @@ BEGIN
     END IF;
 
     -- utworz_sesje_z_dostawami(jsonb,jsonb): public RPC — authenticated only
-    SELECT p.oid INTO v_fn_oid
-      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'public'
-       AND p.proname = 'utworz_sesje_z_dostawami'
-       AND pg_get_function_identity_arguments(p.oid) = 'jsonb, jsonb';
+    v_fn_oid := to_regprocedure('public.utworz_sesje_z_dostawami(jsonb,jsonb)')::oid;
     IF v_fn_oid IS NULL THEN
       RAISE EXCEPTION 'VERIFY FAIL: utworz_sesje_z_dostawami(jsonb,jsonb) not found for grant check';
     END IF;
