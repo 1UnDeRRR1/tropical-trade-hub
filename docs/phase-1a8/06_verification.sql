@@ -125,6 +125,17 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
                  WHERE n.nspname='public' AND p.proname='tt_lock_final_cost')
     THEN RAISE EXCEPTION 'VERIFY FAIL: tt_lock_final_cost missing'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+                 WHERE n.nspname='public' AND p.proname='tt_transport_sesje_protect_invariants')
+    THEN RAISE EXCEPTION 'VERIFY FAIL: tt_transport_sesje_protect_invariants missing'; END IF;
+
+  -- invariant-protection trigger bound to transport_sesje
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgrelid = 'public.transport_sesje'::regclass
+      AND tgname  = 'trg_transport_sesje_protect_invariants'
+      AND NOT tgisinternal
+  ) THEN RAISE EXCEPTION 'VERIFY FAIL: trg_transport_sesje_protect_invariants missing on transport_sesje'; END IF;
 
   ------------------------------------------------------------------
   -- 6. Grants

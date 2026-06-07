@@ -76,6 +76,39 @@ $$;
 
 REVOKE ALL ON FUNCTION public.tt_lock_final_cost() FROM PUBLIC;
 
+-- Invariant protection on UPDATE: structural / system fields are immutable
+-- via direct table UPDATE, regardless of role. Staff use service_role for
+-- exceptional corrections. This complements RLS (does not replace it).
+CREATE OR REPLACE FUNCTION public.tt_transport_sesje_protect_invariants()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.sesja_id IS DISTINCT FROM OLD.sesja_id THEN
+      RAISE EXCEPTION 'transport_sesje.sesja_id is immutable';
+    END IF;
+    IF NEW.numer_sesji IS DISTINCT FROM OLD.numer_sesji THEN
+      RAISE EXCEPTION 'transport_sesje.numer_sesji is immutable';
+    END IF;
+    IF NEW.import_manager_id IS DISTINCT FROM OLD.import_manager_id THEN
+      RAISE EXCEPTION 'transport_sesje.import_manager_id is immutable (no reassignment)';
+    END IF;
+    IF NEW.created_by IS DISTINCT FROM OLD.created_by THEN
+      RAISE EXCEPTION 'transport_sesje.created_by is immutable';
+    END IF;
+    IF NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+      RAISE EXCEPTION 'transport_sesje.created_at is immutable';
+    END IF;
+  END IF;
+  RETURN NEW;
+END
+$$;
+
+REVOKE ALL ON FUNCTION public.tt_transport_sesje_protect_invariants() FROM PUBLIC;
+
 -- ---------------------------------------------------------------------
 -- 3. public.transport_sesje
 -- ---------------------------------------------------------------------
@@ -140,6 +173,10 @@ CREATE TRIGGER trg_transport_sesje_touch_updated_at
 CREATE TRIGGER trg_transport_sesje_lock_final_cost
   BEFORE INSERT OR UPDATE ON public.transport_sesje
   FOR EACH ROW EXECUTE FUNCTION public.tt_lock_final_cost();
+
+CREATE TRIGGER trg_transport_sesje_protect_invariants
+  BEFORE UPDATE ON public.transport_sesje
+  FOR EACH ROW EXECUTE FUNCTION public.tt_transport_sesje_protect_invariants();
 
 -- ---------------------------------------------------------------------
 -- 4. public.dostawy.sesja_id  (single new column, FK, index)

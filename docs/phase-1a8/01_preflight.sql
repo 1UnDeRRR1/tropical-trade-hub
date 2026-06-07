@@ -47,7 +47,8 @@ BEGIN
         'ustaw_wstepny_koszt_transportu',
         'tt_next_numer_sesji',
         'tt_lock_final_cost',
-        'tt_touch_updated_at'
+        'tt_touch_updated_at',
+        'tt_transport_sesje_protect_invariants'
       )
   LOOP
     RAISE EXCEPTION 'Preflight FAIL: Phase 1A.8 function already exists: %', v_present;
