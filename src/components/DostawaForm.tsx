@@ -20,29 +20,49 @@ import {
 // ====================================================================
 // ANTI-REGRESSION FIELD CHECKLIST — do NOT remove fields silently.
 // Any removal requires explicit owner approval in the prompt.
+//
 // Header (must be visible):
-//   Dostawca, Kraj załadunku, Data załadunku, Data dostawy, Import manager, Komentarz
+//   Dostawca, Kraj załadunku, Data załadunku, Data dostawy,
+//   Import manager, Komentarz
+// Transport block (create mode only):
+//   Wstępny koszt transportu, Finalny koszt transportu,
+//   Adres załadunku (autogrow), Numer załadunku, Temperatura transportu
 // Position (must be visible):
 //   Produkt, Kraj pochodzenia, Odmiana/Sort, Opakowanie, Materiał tary,
+//   Klasa, Kaliber, Marka,
 //   Palety, Ilość opakowań, Netto, Brutto, Cena za 1 kg,
-//   Cena za opakowanie (derived display-only), Komentarz pozycji
-// BLOCKED — NOT in DB/RPC, do NOT fake in UI/notes/state:
-//   Marka, Kaliber, Klasa, Cena transportu za auto, Koszt własny 1 kg,
-//   Dodaj nową dostawę (multi-dostawa session)
+//   Cena za opakowanie (derived display-only), Koszt własny preview,
+//   Komentarz pozycji
+//
+// REQUIRED VISUAL FEEDBACK (do not regress):
+//   - red border on invalid/required-empty fields (inputs, combobox, dates,
+//     numeric, material chips, transport cost)
+//   - on failed save: form-shake on root, field-invalid-pulse on invalid
+//     fields, navigator.vibrate when available
+//   - normal typing in one field MUST NOT pulse other fields
+//
+// DATES (do not regress):
+//   - Both date fields empty by default; user enters manually.
+//   - Validate: both present AND data_dostawy > data_zaladunku.
+//   - No auto-fill of today. No `min={today}` restriction beyond
+//     "delivery > loading" relationship.
+//
+// AUTOCOMPLETE (do not regress):
+//   - minChars = 2; match only from word start (startsWithWord);
+//     aliases allowed only if alias token starts with typed letters.
+//
+// FORBIDDEN without explicit owner approval (per Phase 1B-C):
+//   - removing/hiding fields, renaming sections, new visible tabs/routes,
+//     exposing system terms (sesja_id / transport_sesje / position_id)
+//   - writing business data into notes as fake storage
+//   - changing access rights, position_id lifecycle, or starting
+//     documents/balances/payments/storage/sales/Logistyka modules
 // ====================================================================
 
 // Vehicle capacity hard limits
 const MAX_PALETY = 26;
 const MAX_BRUTTO_KG = 21500;
 
-// Local (not UTC) YYYY-MM-DD for date validation
-function localTodayStr(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 const INT_RE = /^\d+$/;
 const DEC_RE = /^\d+([.,]\d+)?$/;
 
