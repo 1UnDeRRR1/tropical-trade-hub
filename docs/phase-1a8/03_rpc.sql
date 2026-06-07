@@ -171,7 +171,20 @@ BEGIN
     RAISE EXCEPTION 'Import manager może tworzyć tylko własne sesje';
   END IF;
 
-  -- ---------- 4. Preliminary cost rule for import_manager ----------
+  -- ---------- 4. Cost rule at creation ----------
+  -- Phase 1A.8 Option A: accept both preliminary and final at creation.
+  -- Both must be >= 0 if provided (CHECK constraints also enforce this).
+  -- For import_manager-owned creation at least one of preliminary>0 or
+  -- final>0 is required (final does NOT fake preliminary; if final is set
+  -- it is recorded as-is and tt_lock_final_cost stamps final_locked_at).
+  -- Staff (super_admin/kierownik/asystent_kierownika) may create with neither.
+  IF v_preliminary IS NOT NULL AND v_preliminary < 0 THEN
+    RAISE EXCEPTION 'preliminary_transport_cost_eur musi być >= 0';
+  END IF;
+  IF v_final IS NOT NULL AND v_final < 0 THEN
+    RAISE EXCEPTION 'final_transport_cost_eur musi być >= 0';
+  END IF;
+
   IF 'import_manager' = ANY(v_role_keys)
      AND NOT (
           'super_admin'         = ANY(v_role_keys)
@@ -179,8 +192,8 @@ BEGIN
        OR 'asystent_kierownika' = ANY(v_role_keys)
      )
   THEN
-    IF v_preliminary IS NULL OR v_preliminary <= 0 THEN
-      RAISE EXCEPTION 'import_manager musi podać preliminary_transport_cost_eur > 0';
+    IF COALESCE(v_preliminary, 0) <= 0 AND COALESCE(v_final, 0) <= 0 THEN
+      RAISE EXCEPTION 'import_manager musi podać preliminary_transport_cost_eur > 0 lub final_transport_cost_eur > 0';
     END IF;
   END IF;
 

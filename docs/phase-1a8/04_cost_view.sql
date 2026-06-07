@@ -15,11 +15,16 @@
 --   - pozycja.waluta <> 'EUR'
 --   - total_brutto_session = 0 or netto_pos = 0
 --
--- Access:
+-- Access (rationale — not confidentiality):
 --   View body returns rows only for super_admin / kierownik /
 --   asystent_kierownika. import_manager and logistyk see 0 rows in
---   Phase 1A. A future Phase 1B/1C RPC will give import_manager a
---   preview of own positions.
+--   Phase 1A. This is a denominator-correctness restriction:
+--   total_brutto_session must be computed across the FULL session, and
+--   an RLS filter applied through this view would skew that denominator.
+--   Transport cost itself is NOT secret from import_manager — they see
+--   it on transport_sesje. Phase 1B/1C will add a SECURITY DEFINER RPC
+--   that computes total_brutto_session across the full session and
+--   returns only the caller's own positions (import_manager preview).
 -- =====================================================================
 
 BEGIN;

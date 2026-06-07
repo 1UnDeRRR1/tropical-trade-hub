@@ -53,8 +53,9 @@ DROP INDEX IF EXISTS public.idx_dostawy_sesja_id;
 ALTER TABLE public.dostawy DROP COLUMN IF EXISTS sesja_id;
 
 -- 6. Triggers on transport_sesje (explicit, then drop table)
-DROP TRIGGER IF EXISTS trg_transport_sesje_lock_final_cost  ON public.transport_sesje;
-DROP TRIGGER IF EXISTS trg_transport_sesje_touch_updated_at ON public.transport_sesje;
+DROP TRIGGER IF EXISTS trg_transport_sesje_protect_invariants ON public.transport_sesje;
+DROP TRIGGER IF EXISTS trg_transport_sesje_lock_final_cost    ON public.transport_sesje;
+DROP TRIGGER IF EXISTS trg_transport_sesje_touch_updated_at   ON public.transport_sesje;
 
 -- Indexes on transport_sesje (will go with the table; explicit for clarity)
 DROP INDEX IF EXISTS public.idx_transport_sesje_status;
@@ -66,6 +67,7 @@ DROP INDEX IF EXISTS public.idx_transport_sesje_import_manager;
 DROP TABLE IF EXISTS public.transport_sesje;
 
 -- 8. Phase 1A.8-owned trigger functions
+DROP FUNCTION IF EXISTS public.tt_transport_sesje_protect_invariants();
 DROP FUNCTION IF EXISTS public.tt_lock_final_cost();
 DROP FUNCTION IF EXISTS public.tt_touch_updated_at();
 
