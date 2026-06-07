@@ -1043,7 +1043,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     : null;
 
   return (
-    <div key={shakeKey} className={cn("space-y-4 max-w-5xl", shakeKey > 0 && "form-shake")}>
+    <div className="space-y-4 max-w-5xl">
       <div>
         <h1 className="text-2xl font-bold">
           {mode === "edit" ? `Edycja dostawy` : "Nowa dostawa"}
@@ -1057,7 +1057,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
       </div>
 
       {submitTried && (headerErrors.length > 0 || capacityErrors.length > 0 || submitError) && (
-        <Card className="border-destructive">
+        <Card key={shakeKey} className={cn("border-destructive", shakeKey > 0 && "form-shake")}>
           <CardContent className="py-3 text-sm text-destructive space-y-1">
             {headerErrors.map((m, i) => <div key={`h${i}`}>• {m}</div>)}
             {capacityErrors.map((m, i) => <div key={`c${i}`}>• {m}</div>)}
