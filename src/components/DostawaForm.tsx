@@ -890,7 +890,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const invalidFieldKeys = (freshLineErrors = lineErrors) => [
     ...(!dostawcaId ? ["dostawca"] : []),
     ...(!krajId ? ["kraj_zaladunku"] : []),
-    ...(!dataZaladunku || dataZaladunku < todayStr ? ["data_zaladunku"] : []),
+    ...(!dataZaladunku ? ["data_zaladunku"] : []),
     ...(!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku) ? ["data_dostawy"] : []),
     ...(!managerId ? ["manager"] : []),
     ...((notes ?? "").length > 100 ? ["notes"] : []),
