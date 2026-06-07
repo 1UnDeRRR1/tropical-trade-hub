@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Truck,
-  Container,
   Route as RouteIcon,
   Warehouse,
   ShoppingCart,
@@ -22,6 +21,7 @@ export interface NavItem {
   label: string;
   icon: ComponentType<{ className?: string }>;
   roles: string[]; // role keys allowed; super_admin always allowed
+  hidden?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
