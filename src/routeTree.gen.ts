@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedUzytkownicyRouteImport } from './routes/_authenticated/uzytkownicy'
 import { Route as AuthenticatedUstawieniaRouteImport } from './routes/_authenticated/ustawienia'
 import { Route as AuthenticatedSprzedazRouteImport } from './routes/_authenticated/sprzedaz'
+import { Route as AuthenticatedSesjeRouteImport } from './routes/_authenticated/sesje'
 import { Route as AuthenticatedRozliczeniaRouteImport } from './routes/_authenticated/rozliczenia'
 import { Route as AuthenticatedRaportyRouteImport } from './routes/_authenticated/raporty'
 import { Route as AuthenticatedPrzewoznicyRouteImport } from './routes/_authenticated/przewoznicy'
@@ -27,8 +28,10 @@ import { Route as AuthenticatedKlienciRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedFakturowanieRouteImport } from './routes/_authenticated/fakturowanie'
 import { Route as AuthenticatedDostawyRouteImport } from './routes/_authenticated/dostawy'
 import { Route as AuthenticatedDostawcyRouteImport } from './routes/_authenticated/dostawcy'
+import { Route as AuthenticatedSesjeIndexRouteImport } from './routes/_authenticated/sesje.index'
 import { Route as AuthenticatedDostawyIndexRouteImport } from './routes/_authenticated/dostawy.index'
 import { Route as AuthenticatedDostawyNowaRouteImport } from './routes/_authenticated/dostawy.nowa'
+import { Route as AuthenticatedSesjeIdIndexRouteImport } from './routes/_authenticated/sesje.$id.index'
 import { Route as AuthenticatedDostawyIdIndexRouteImport } from './routes/_authenticated/dostawy.$id.index'
 import { Route as AuthenticatedDostawyIdEdytujRouteImport } from './routes/_authenticated/dostawy.$id.edytuj'
 
@@ -65,6 +68,11 @@ const AuthenticatedUstawieniaRoute = AuthenticatedUstawieniaRouteImport.update({
 const AuthenticatedSprzedazRoute = AuthenticatedSprzedazRouteImport.update({
   id: '/sprzedaz',
   path: '/sprzedaz',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSesjeRoute = AuthenticatedSesjeRouteImport.update({
+  id: '/sesje',
+  path: '/sesje',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRozliczeniaRoute =
@@ -126,6 +134,11 @@ const AuthenticatedDostawcyRoute = AuthenticatedDostawcyRouteImport.update({
   path: '/dostawcy',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSesjeIndexRoute = AuthenticatedSesjeIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedSesjeRoute,
+} as any)
 const AuthenticatedDostawyIndexRoute =
   AuthenticatedDostawyIndexRouteImport.update({
     id: '/',
@@ -137,6 +150,12 @@ const AuthenticatedDostawyNowaRoute =
     id: '/nowa',
     path: '/nowa',
     getParentRoute: () => AuthenticatedDostawyRoute,
+  } as any)
+const AuthenticatedSesjeIdIndexRoute =
+  AuthenticatedSesjeIdIndexRouteImport.update({
+    id: '/$id/',
+    path: '/$id/',
+    getParentRoute: () => AuthenticatedSesjeRoute,
   } as any)
 const AuthenticatedDostawyIdIndexRoute =
   AuthenticatedDostawyIdIndexRouteImport.update({
@@ -166,13 +185,16 @@ export interface FileRoutesByFullPath {
   '/przewoznicy': typeof AuthenticatedPrzewoznicyRoute
   '/raporty': typeof AuthenticatedRaportyRoute
   '/rozliczenia': typeof AuthenticatedRozliczeniaRoute
+  '/sesje': typeof AuthenticatedSesjeRouteWithChildren
   '/sprzedaz': typeof AuthenticatedSprzedazRoute
   '/ustawienia': typeof AuthenticatedUstawieniaRoute
   '/uzytkownicy': typeof AuthenticatedUzytkownicyRoute
   '/dostawy/nowa': typeof AuthenticatedDostawyNowaRoute
   '/dostawy/': typeof AuthenticatedDostawyIndexRoute
+  '/sesje/': typeof AuthenticatedSesjeIndexRoute
   '/dostawy/$id/edytuj': typeof AuthenticatedDostawyIdEdytujRoute
   '/dostawy/$id/': typeof AuthenticatedDostawyIdIndexRoute
+  '/sesje/$id/': typeof AuthenticatedSesjeIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -193,8 +215,10 @@ export interface FileRoutesByTo {
   '/uzytkownicy': typeof AuthenticatedUzytkownicyRoute
   '/dostawy/nowa': typeof AuthenticatedDostawyNowaRoute
   '/dostawy': typeof AuthenticatedDostawyIndexRoute
+  '/sesje': typeof AuthenticatedSesjeIndexRoute
   '/dostawy/$id/edytuj': typeof AuthenticatedDostawyIdEdytujRoute
   '/dostawy/$id': typeof AuthenticatedDostawyIdIndexRoute
+  '/sesje/$id': typeof AuthenticatedSesjeIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -213,13 +237,16 @@ export interface FileRoutesById {
   '/_authenticated/przewoznicy': typeof AuthenticatedPrzewoznicyRoute
   '/_authenticated/raporty': typeof AuthenticatedRaportyRoute
   '/_authenticated/rozliczenia': typeof AuthenticatedRozliczeniaRoute
+  '/_authenticated/sesje': typeof AuthenticatedSesjeRouteWithChildren
   '/_authenticated/sprzedaz': typeof AuthenticatedSprzedazRoute
   '/_authenticated/ustawienia': typeof AuthenticatedUstawieniaRoute
   '/_authenticated/uzytkownicy': typeof AuthenticatedUzytkownicyRoute
   '/_authenticated/dostawy/nowa': typeof AuthenticatedDostawyNowaRoute
   '/_authenticated/dostawy/': typeof AuthenticatedDostawyIndexRoute
+  '/_authenticated/sesje/': typeof AuthenticatedSesjeIndexRoute
   '/_authenticated/dostawy/$id/edytuj': typeof AuthenticatedDostawyIdEdytujRoute
   '/_authenticated/dostawy/$id/': typeof AuthenticatedDostawyIdIndexRoute
+  '/_authenticated/sesje/$id/': typeof AuthenticatedSesjeIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -238,13 +265,16 @@ export interface FileRouteTypes {
     | '/przewoznicy'
     | '/raporty'
     | '/rozliczenia'
+    | '/sesje'
     | '/sprzedaz'
     | '/ustawienia'
     | '/uzytkownicy'
     | '/dostawy/nowa'
     | '/dostawy/'
+    | '/sesje/'
     | '/dostawy/$id/edytuj'
     | '/dostawy/$id/'
+    | '/sesje/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -265,8 +295,10 @@ export interface FileRouteTypes {
     | '/uzytkownicy'
     | '/dostawy/nowa'
     | '/dostawy'
+    | '/sesje'
     | '/dostawy/$id/edytuj'
     | '/dostawy/$id'
+    | '/sesje/$id'
   id:
     | '__root__'
     | '/'
@@ -284,13 +316,16 @@ export interface FileRouteTypes {
     | '/_authenticated/przewoznicy'
     | '/_authenticated/raporty'
     | '/_authenticated/rozliczenia'
+    | '/_authenticated/sesje'
     | '/_authenticated/sprzedaz'
     | '/_authenticated/ustawienia'
     | '/_authenticated/uzytkownicy'
     | '/_authenticated/dostawy/nowa'
     | '/_authenticated/dostawy/'
+    | '/_authenticated/sesje/'
     | '/_authenticated/dostawy/$id/edytuj'
     | '/_authenticated/dostawy/$id/'
+    | '/_authenticated/sesje/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -349,6 +384,13 @@ declare module '@tanstack/react-router' {
       path: '/sprzedaz'
       fullPath: '/sprzedaz'
       preLoaderRoute: typeof AuthenticatedSprzedazRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sesje': {
+      id: '/_authenticated/sesje'
+      path: '/sesje'
+      fullPath: '/sesje'
+      preLoaderRoute: typeof AuthenticatedSesjeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/rozliczenia': {
@@ -428,6 +470,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDostawcyRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/sesje/': {
+      id: '/_authenticated/sesje/'
+      path: '/'
+      fullPath: '/sesje/'
+      preLoaderRoute: typeof AuthenticatedSesjeIndexRouteImport
+      parentRoute: typeof AuthenticatedSesjeRoute
+    }
     '/_authenticated/dostawy/': {
       id: '/_authenticated/dostawy/'
       path: '/'
@@ -441,6 +490,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dostawy/nowa'
       preLoaderRoute: typeof AuthenticatedDostawyNowaRouteImport
       parentRoute: typeof AuthenticatedDostawyRoute
+    }
+    '/_authenticated/sesje/$id/': {
+      id: '/_authenticated/sesje/$id/'
+      path: '/$id'
+      fullPath: '/sesje/$id/'
+      preLoaderRoute: typeof AuthenticatedSesjeIdIndexRouteImport
+      parentRoute: typeof AuthenticatedSesjeRoute
     }
     '/_authenticated/dostawy/$id/': {
       id: '/_authenticated/dostawy/$id/'
@@ -476,6 +532,19 @@ const AuthenticatedDostawyRouteChildren: AuthenticatedDostawyRouteChildren = {
 const AuthenticatedDostawyRouteWithChildren =
   AuthenticatedDostawyRoute._addFileChildren(AuthenticatedDostawyRouteChildren)
 
+interface AuthenticatedSesjeRouteChildren {
+  AuthenticatedSesjeIndexRoute: typeof AuthenticatedSesjeIndexRoute
+  AuthenticatedSesjeIdIndexRoute: typeof AuthenticatedSesjeIdIndexRoute
+}
+
+const AuthenticatedSesjeRouteChildren: AuthenticatedSesjeRouteChildren = {
+  AuthenticatedSesjeIndexRoute: AuthenticatedSesjeIndexRoute,
+  AuthenticatedSesjeIdIndexRoute: AuthenticatedSesjeIdIndexRoute,
+}
+
+const AuthenticatedSesjeRouteWithChildren =
+  AuthenticatedSesjeRoute._addFileChildren(AuthenticatedSesjeRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDostawcyRoute: typeof AuthenticatedDostawcyRoute
   AuthenticatedDostawyRoute: typeof AuthenticatedDostawyRouteWithChildren
@@ -488,6 +557,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPrzewoznicyRoute: typeof AuthenticatedPrzewoznicyRoute
   AuthenticatedRaportyRoute: typeof AuthenticatedRaportyRoute
   AuthenticatedRozliczeniaRoute: typeof AuthenticatedRozliczeniaRoute
+  AuthenticatedSesjeRoute: typeof AuthenticatedSesjeRouteWithChildren
   AuthenticatedSprzedazRoute: typeof AuthenticatedSprzedazRoute
   AuthenticatedUstawieniaRoute: typeof AuthenticatedUstawieniaRoute
   AuthenticatedUzytkownicyRoute: typeof AuthenticatedUzytkownicyRoute
@@ -505,6 +575,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPrzewoznicyRoute: AuthenticatedPrzewoznicyRoute,
   AuthenticatedRaportyRoute: AuthenticatedRaportyRoute,
   AuthenticatedRozliczeniaRoute: AuthenticatedRozliczeniaRoute,
+  AuthenticatedSesjeRoute: AuthenticatedSesjeRouteWithChildren,
   AuthenticatedSprzedazRoute: AuthenticatedSprzedazRoute,
   AuthenticatedUstawieniaRoute: AuthenticatedUstawieniaRoute,
   AuthenticatedUzytkownicyRoute: AuthenticatedUzytkownicyRoute,
@@ -522,13 +593,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
