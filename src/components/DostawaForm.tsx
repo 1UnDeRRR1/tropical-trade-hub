@@ -20,29 +20,49 @@ import {
 // ====================================================================
 // ANTI-REGRESSION FIELD CHECKLIST — do NOT remove fields silently.
 // Any removal requires explicit owner approval in the prompt.
+//
 // Header (must be visible):
-//   Dostawca, Kraj załadunku, Data załadunku, Data dostawy, Import manager, Komentarz
+//   Dostawca, Kraj załadunku, Data załadunku, Data dostawy,
+//   Import manager, Komentarz
+// Transport block (create mode only):
+//   Wstępny koszt transportu, Finalny koszt transportu,
+//   Adres załadunku (autogrow), Numer załadunku, Temperatura transportu
 // Position (must be visible):
 //   Produkt, Kraj pochodzenia, Odmiana/Sort, Opakowanie, Materiał tary,
+//   Klasa, Kaliber, Marka,
 //   Palety, Ilość opakowań, Netto, Brutto, Cena za 1 kg,
-//   Cena za opakowanie (derived display-only), Komentarz pozycji
-// BLOCKED — NOT in DB/RPC, do NOT fake in UI/notes/state:
-//   Marka, Kaliber, Klasa, Cena transportu za auto, Koszt własny 1 kg,
-//   Dodaj nową dostawę (multi-dostawa session)
+//   Cena za opakowanie (derived display-only), Koszt własny preview,
+//   Komentarz pozycji
+//
+// REQUIRED VISUAL FEEDBACK (do not regress):
+//   - red border on invalid/required-empty fields (inputs, combobox, dates,
+//     numeric, material chips, transport cost)
+//   - on failed save: form-shake on root, field-invalid-pulse on invalid
+//     fields, navigator.vibrate when available
+//   - normal typing in one field MUST NOT pulse other fields
+//
+// DATES (do not regress):
+//   - Both date fields empty by default; user enters manually.
+//   - Validate: both present AND data_dostawy > data_zaladunku.
+//   - No auto-fill of today. No `min={today}` restriction beyond
+//     "delivery > loading" relationship.
+//
+// AUTOCOMPLETE (do not regress):
+//   - minChars = 2; match only from word start (startsWithWord);
+//     aliases allowed only if alias token starts with typed letters.
+//
+// FORBIDDEN without explicit owner approval (per Phase 1B-C):
+//   - removing/hiding fields, renaming sections, new visible tabs/routes,
+//     exposing system terms (sesja_id / transport_sesje / position_id)
+//   - writing business data into notes as fake storage
+//   - changing access rights, position_id lifecycle, or starting
+//     documents/balances/payments/storage/sales/Logistyka modules
 // ====================================================================
 
 // Vehicle capacity hard limits
 const MAX_PALETY = 26;
 const MAX_BRUTTO_KG = 21500;
 
-// Local (not UTC) YYYY-MM-DD for date validation
-function localTodayStr(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 const INT_RE = /^\d+$/;
 const DEC_RE = /^\d+([.,]\d+)?$/;
 
@@ -74,6 +94,7 @@ interface PozycjaForm {
   opakowanie_source: OpakSource;
   opakowanie_id: string; opakowanie_query: string; opakowanie_custom_text: string;
   material_tary: MaterialTary; material_autofilled: boolean;
+  klasa: string; kaliber: string; marka: string;
   palety: string; ilosc_opakowan: string;
   netto_kg: string; brutto_kg: string; weights_autofilled: boolean;
   cena_zakupu: string; waluta: string; notes: string;
@@ -86,10 +107,12 @@ const EMPTY_POZ: PozycjaForm = {
   opakowanie_source: "none",
   opakowanie_id: "", opakowanie_query: "", opakowanie_custom_text: "",
   material_tary: "", material_autofilled: false,
+  klasa: "", kaliber: "", marka: "",
   palety: "", ilosc_opakowan: "",
   netto_kg: "", brutto_kg: "", weights_autofilled: false,
   cena_zakupu: "", waluta: "EUR", notes: "",
 };
+
 
 // ---------- Helpers ----------
 function canonicalMaterial(raw: string | null | undefined): "karton" | "drewno" | "plastik" | null {
@@ -403,6 +426,9 @@ export interface ExistingDostawa {
     opakowanie_custom_text: string | null;
     material_tary: "karton"|"drewno"|"plastik";
     kraj_id: string | null;
+    klasa: string | null;
+    kaliber: string | null;
+    marka: string | null;
     palety: number;
     ilosc_opakowan: number | null;
     netto_kg: number;
@@ -411,6 +437,7 @@ export interface ExistingDostawa {
     waluta: string;
     notes: string | null;
   }>;
+
 }
 
 interface DostawaFormProps {
@@ -438,9 +465,11 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const [krajAliases, setKrajAliases] = useState<Map<string, Set<string>>>(new Map());
   const [dostawcaAliases, setDostawcaAliases] = useState<Map<string, Set<string>>>(new Map());
 
-  const today = localTodayStr();
-  const [dataZaladunku, setDataZaladunku] = useState(existing?.data_zaladunku ?? today);
-  const [dataDostawy, setDataDostawy] = useState(existing?.data_dostawy ?? today);
+  // Dates: empty by default in create mode. User must enter manually.
+  // Validation requires both present and data_dostawy > data_zaladunku.
+  const [dataZaladunku, setDataZaladunku] = useState(existing?.data_zaladunku ?? "");
+  const [dataDostawy, setDataDostawy] = useState(existing?.data_dostawy ?? "");
+
   const [dostawcaId, setDostawcaId] = useState(existing?.dostawca_id ?? "");
   const [dostawcaQuery, setDostawcaQuery] = useState("");
   const [krajId, setKrajId] = useState(existing?.kraj_id ?? "");
@@ -472,6 +501,9 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           opakowanie_custom_text: p.opakowanie_custom_text ?? "",
           material_tary: p.material_tary,
           material_autofilled: false,
+          klasa: p.klasa ?? "",
+          kaliber: p.kaliber ?? "",
+          marka: p.marka ?? "",
           palety: String(p.palety ?? 0),
           ilosc_opakowan: p.ilosc_opakowan == null ? "" : String(p.ilosc_opakowan),
           netto_kg: String(p.netto_kg ?? ""),
@@ -483,6 +515,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         }))
       : [{ ...EMPTY_POZ }],
   );
+
   const [saving, setSaving] = useState(false);
   const [submitTried, setSubmitTried] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -822,20 +855,19 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     return errs;
   }, [totals]);
 
-  const todayStr = localTodayStr();
   const headerErrors: string[] = useMemo(() => {
     const errs: string[] = [];
     if (!dostawcaId) errs.push(dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany");
     if (!krajId) errs.push(krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany");
     if (!dataZaladunku) errs.push("Data załadunku wymagana");
-    else if (dataZaladunku < todayStr) errs.push("Data załadunku nie może być wcześniejsza niż dzisiaj");
     if (!dataDostawy) errs.push("Data dostawy wymagana");
     else if (dataZaladunku && dataDostawy <= dataZaladunku) errs.push("Data dostawy musi być późniejsza niż data załadunku");
     if (!managerId) errs.push("Import manager wymagany");
     if ((notes ?? "").length > 100) errs.push("Komentarz: maksymalnie 100 znaków");
 
     return errs;
-  }, [dataZaladunku, dataDostawy, dostawcaId, dostawcaQuery, krajId, krajZaladunkuQuery, managerId, notes, todayStr]);
+  }, [dataZaladunku, dataDostawy, dostawcaId, dostawcaQuery, krajId, krajZaladunkuQuery, managerId, notes]);
+
 
   const hasAnyError =
     headerErrors.length > 0 ||
@@ -869,7 +901,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   const invalidFieldKeys = (freshLineErrors = lineErrors) => [
     ...(!dostawcaId ? ["dostawca"] : []),
     ...(!krajId ? ["kraj_zaladunku"] : []),
-    ...(!dataZaladunku || dataZaladunku < todayStr ? ["data_zaladunku"] : []),
+    ...(!dataZaladunku ? ["data_zaladunku"] : []),
     ...(!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku) ? ["data_dostawy"] : []),
     ...(!managerId ? ["manager"] : []),
     ...((notes ?? "").length > 100 ? ["notes"] : []),
@@ -886,7 +918,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     if (!dostawcaId) freshHeaderErrors.push(dostawcaQuery.trim() ? "Wybierz dostawcę z listy" : "Dostawca wymagany");
     if (!krajId) freshHeaderErrors.push(krajZaladunkuQuery.trim() ? "Wybierz kraj z listy" : "Kraj załadunku wymagany");
     if (!dataZaladunku) freshHeaderErrors.push("Data załadunku wymagana");
-    else if (dataZaladunku < todayStr) freshHeaderErrors.push("Data załadunku nie może być wcześniejsza niż dzisiaj");
+
     if (!dataDostawy) freshHeaderErrors.push("Data dostawy wymagana");
     else if (dataZaladunku && dataDostawy <= dataZaladunku) freshHeaderErrors.push("Data dostawy musi być późniejsza niż data załadunku");
     if (!managerId) freshHeaderErrors.push("Import manager wymagany");
@@ -1139,24 +1171,41 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           <div className="grid grid-cols-2 gap-3">
             <div className="min-w-0">
               <Label>Data załadunku *</Label>
-              <Input type="date" min={todayStr} value={dataZaladunku} onChange={(e) => setDataZaladunku(e.target.value)}
-                     className={cn("h-10 w-full min-w-0 max-w-full block text-xs px-2", (!dataZaladunku || dataZaladunku < todayStr) && "border-destructive", shouldPulse("data_zaladunku", !dataZaladunku || dataZaladunku < todayStr) && "field-invalid-pulse")} />
+              <Input
+                type="date"
+                lang="pl"
+                value={dataZaladunku}
+                onChange={(e) => setDataZaladunku(e.target.value)}
+                className={cn(
+                  "h-10 w-full min-w-0 max-w-full block text-base px-2",
+                  !dataZaladunku && "border-destructive",
+                  shouldPulse("data_zaladunku", !dataZaladunku) && "field-invalid-pulse",
+                )}
+              />
               {submitTried && !dataZaladunku && <FieldErr msg="Data załadunku wymagana" />}
-              {submitTried && dataZaladunku && dataZaladunku < todayStr && (
-                <FieldErr msg="Data załadunku nie może być wcześniejsza niż dzisiaj" />
-              )}
             </div>
 
             <div className="min-w-0">
               <Label>Data dostawy *</Label>
-              <Input type="date" min={dataZaladunku || todayStr} value={dataDostawy} onChange={(e) => setDataDostawy(e.target.value)}
-                     className={cn("h-10 w-full min-w-0 max-w-full block text-xs px-2", (!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive", shouldPulse("data_dostawy", !!(!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku))) && "field-invalid-pulse")} />
+              <Input
+                type="date"
+                lang="pl"
+                min={dataZaladunku || undefined}
+                value={dataDostawy}
+                onChange={(e) => setDataDostawy(e.target.value)}
+                className={cn(
+                  "h-10 w-full min-w-0 max-w-full block text-base px-2",
+                  (!dataDostawy || (!!dataZaladunku && dataDostawy <= dataZaladunku)) && "border-destructive",
+                  shouldPulse("data_dostawy", !!(!dataDostawy || (dataZaladunku && dataDostawy <= dataZaladunku))) && "field-invalid-pulse",
+                )}
+              />
               {submitTried && !dataDostawy && <FieldErr msg="Data dostawy wymagana" />}
               {submitTried && dataDostawy && dataZaladunku && dataDostawy <= dataZaladunku && (
                 <FieldErr msg="Data dostawy musi być późniejsza niż data załadunku" />
               )}
             </div>
           </div>
+
 
           <div>
             <Label>Import manager *</Label>
