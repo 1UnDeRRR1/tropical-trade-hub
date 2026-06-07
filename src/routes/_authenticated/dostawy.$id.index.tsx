@@ -383,6 +383,17 @@ function Page() {
                             <TableCell className="text-right">{Number(p.netto_kg).toFixed(2)}</TableCell>
                             {canSeeFinance && <TableCell className="text-right">{Number(p.cena_zakupu).toFixed(2)}</TableCell>}
                             {canSeeFinance && <TableCell>{p.waluta}</TableCell>}
+                            {canSeeFinance && (() => {
+                              const t = transport?.final && transport.final > 0 ? transport.final : (transport?.prelim && transport.prelim > 0 ? transport.prelim : null);
+                              const kw = t == null ? null : computeKosztWlasnyPerKg({
+                                cena_zakupu_per_kg: Number(p.cena_zakupu),
+                                netto_kg: Number(p.netto_kg),
+                                brutto_kg: p.brutto_kg == null ? 0 : Number(p.brutto_kg),
+                                palety: Number(p.palety),
+                                transport_cost_eur: t,
+                              });
+                              return <TableCell className="text-right">{formatKosztWlasny(kw)} €/kg</TableCell>;
+                            })()}
                             <TableCell><Badge variant="outline">{st?.stock_status ?? "—"}</Badge></TableCell>
                             <TableCell><Badge variant="outline">{st?.settlement_status ?? "—"}</Badge></TableCell>
                           </TableRow>
