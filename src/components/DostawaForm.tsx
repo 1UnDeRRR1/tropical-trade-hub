@@ -94,6 +94,7 @@ interface PozycjaForm {
   opakowanie_source: OpakSource;
   opakowanie_id: string; opakowanie_query: string; opakowanie_custom_text: string;
   material_tary: MaterialTary; material_autofilled: boolean;
+  klasa: string; kaliber: string; marka: string;
   palety: string; ilosc_opakowan: string;
   netto_kg: string; brutto_kg: string; weights_autofilled: boolean;
   cena_zakupu: string; waluta: string; notes: string;
@@ -106,10 +107,12 @@ const EMPTY_POZ: PozycjaForm = {
   opakowanie_source: "none",
   opakowanie_id: "", opakowanie_query: "", opakowanie_custom_text: "",
   material_tary: "", material_autofilled: false,
+  klasa: "", kaliber: "", marka: "",
   palety: "", ilosc_opakowan: "",
   netto_kg: "", brutto_kg: "", weights_autofilled: false,
   cena_zakupu: "", waluta: "EUR", notes: "",
 };
+
 
 // ---------- Helpers ----------
 function canonicalMaterial(raw: string | null | undefined): "karton" | "drewno" | "plastik" | null {
