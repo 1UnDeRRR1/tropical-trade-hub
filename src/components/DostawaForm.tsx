@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { computeKosztWlasnyPerKg, formatKosztWlasny } from "@/lib/koszt-wlasny";
 import {
   Select,
   SelectContent,
@@ -144,34 +145,7 @@ function isBlank(s: string): boolean {
   return s === null || s === undefined || String(s).trim() === "";
 }
 
-// ---------- Koszt własny preview (owner formula, frontend-only) ----------
-// Inputs already validated > 0 by caller. Returns null if not computable.
-function computeKosztWlasnyPerKg(args: {
-  cena_zakupu_per_kg: number;
-  netto_kg: number;
-  brutto_kg: number;
-  palety: number;
-  transport_cost_eur: number;
-}): number | null {
-  const { cena_zakupu_per_kg, netto_kg, brutto_kg, palety, transport_cost_eur } = args;
-  if (!(palety > 0) || !(netto_kg > 0) || !(brutto_kg > 0) || !(transport_cost_eur > 0)) return null;
-  const netto_per_pallet = netto_kg / palety;
-  const brutto_per_pallet = brutto_kg / palety;
-  if (!(netto_per_pallet > 0)) return null;
-  let transport_per_kg: number;
-  if (brutto_per_pallet <= 826) {
-    const max_net_kg_in_auto = netto_per_pallet * 26;
-    if (!(max_net_kg_in_auto > 0)) return null;
-    transport_per_kg = transport_cost_eur / max_net_kg_in_auto;
-  } else {
-    const pallets_by_weight = Math.floor(21500 / brutto_per_pallet);
-    const pallets_fit = Math.min(26, pallets_by_weight);
-    if (!(pallets_fit > 0)) return null;
-    const transport_per_pallet = transport_cost_eur / pallets_fit;
-    transport_per_kg = transport_per_pallet / netto_per_pallet;
-  }
-  return cena_zakupu_per_kg + transport_per_kg + 0.02;
-}
+// computeKosztWlasnyPerKg moved to src/lib/koszt-wlasny.ts
 
 // ---------- Calculation engine ----------
 type ChangedField = "produkt"|"kraj"|"odmiana"|"opakowanie"|"material_tary"|"palety"|"ilosc_opakowan"|"netto_kg"|"brutto_kg"|"cena_zakupu"|"waluta"|"notes";
@@ -418,6 +392,11 @@ export interface ExistingDostawa {
   kraj_id: string | null;
   import_manager_id: string;
   notes: string | null;
+  adres_zaladunku?: string | null;
+  numer_zaladunku?: string | null;
+  temperatura_transportu?: string | null;
+  transport_prelim_eur?: number | null;
+  transport_final_eur?: number | null;
   positions: Array<{
     id: string;
     produkt_id: string;
@@ -484,11 +463,15 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
   // Transport block (create mode only — persisted via utworz_sesje_z_dostawami).
   // In edit mode transport fields are not editable here (BLOCKED — would require
   // extending aktualizuj_dostawe_z_pozycjami; out of scope this phase).
-  const [transportPrelim, setTransportPrelim] = useState<string>("");
-  const [transportFinal, setTransportFinal] = useState<string>("");
-  const [adresZaladunku, setAdresZaladunku] = useState<string>("");
-  const [numerZaladunku, setNumerZaladunku] = useState<string>("");
-  const [temperaturaTransportu, setTemperaturaTransportu] = useState<string>("");
+  const [transportPrelim, setTransportPrelim] = useState<string>(
+    existing?.transport_prelim_eur != null ? String(existing.transport_prelim_eur) : "",
+  );
+  const [transportFinal, setTransportFinal] = useState<string>(
+    existing?.transport_final_eur != null ? String(existing.transport_final_eur) : "",
+  );
+  const [adresZaladunku, setAdresZaladunku] = useState<string>(existing?.adres_zaladunku ?? "");
+  const [numerZaladunku, setNumerZaladunku] = useState<string>(existing?.numer_zaladunku ?? "");
+  const [temperaturaTransportu, setTemperaturaTransportu] = useState<string>(existing?.temperatura_transportu ?? "");
   const [pozycje, setPozycje] = useState<PozycjaForm[]>(
     existing
       ? existing.positions.map((p) => ({
@@ -925,13 +908,12 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     if (!managerId) freshHeaderErrors.push("Import manager wymagany");
     if ((notes ?? "").length > 100) freshHeaderErrors.push("Komentarz: maksymalnie 100 znaków");
 
-    // Transport cost: import_manager (without staff override) must provide preliminary>0 OR final>0.
+    // Transport cost: Wstępny koszt transportu (EUR) is mandatory in create flow for all roles.
+    // Finalny koszt does NOT replace missing preliminary.
     const tPrelimNum = toNum(transportPrelim) ?? 0;
     const tFinalNum = toNum(transportFinal) ?? 0;
-    if (mode === "create" && isImportMgr && !isSuper && !isKierownik) {
-      if (!(tPrelimNum > 0) && !(tFinalNum > 0)) {
-        freshHeaderErrors.push("Wymagany jest wstępny lub finalny koszt transportu (> 0).");
-      }
+    if (mode === "create" && !(tPrelimNum > 0)) {
+      freshHeaderErrors.push("Wstępny koszt transportu (EUR) jest wymagany i musi być > 0.");
     }
     if (transportPrelim.trim() && !(tPrelimNum >= 0)) freshHeaderErrors.push("Wstępny koszt transportu: nieprawidłowa liczba.");
     if (transportFinal.trim() && !(tFinalNum >= 0)) freshHeaderErrors.push("Finalny koszt transportu: nieprawidłowa liczba.");
@@ -1061,7 +1043,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     : null;
 
   return (
-    <div key={shakeKey} className={cn("space-y-4 max-w-5xl", shakeKey > 0 && "form-shake")}>
+    <div className="space-y-4 max-w-5xl">
       <div>
         <h1 className="text-2xl font-bold">
           {mode === "edit" ? `Edycja dostawy` : "Nowa dostawa"}
@@ -1075,7 +1057,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
       </div>
 
       {submitTried && (headerErrors.length > 0 || capacityErrors.length > 0 || submitError) && (
-        <Card className="border-destructive">
+        <Card key={shakeKey} className={cn("border-destructive", shakeKey > 0 && "form-shake")}>
           <CardContent className="py-3 text-sm text-destructive space-y-1">
             {headerErrors.map((m, i) => <div key={`h${i}`}>• {m}</div>)}
             {capacityErrors.map((m, i) => <div key={`c${i}`}>• {m}</div>)}
@@ -1239,129 +1221,101 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
         </CardContent>
       </Card>
 
-      {mode === "create" && (
-        <Card>
-          <CardHeader><CardTitle>Transport</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label>Wstępny koszt transportu (€){isImportMgr && !isSuper && !isKierownik ? " *" : ""}</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={transportPrelim}
-                  onChange={(e) => setTransportPrelim(e.target.value)}
-                  placeholder="np. 2300"
-                  className={cn(
-                    submitTried && isImportMgr && !isSuper && !isKierownik
-                      && !(toNum(transportPrelim) ?? 0) && !(toNum(transportFinal) ?? 0)
-                      && "border-destructive",
-                    shouldPulse(
-                      "transport_cost",
-                      submitTried && isImportMgr && !isSuper && !isKierownik
-                        && !(toNum(transportPrelim) ?? 0) && !(toNum(transportFinal) ?? 0),
-                    ) && "field-invalid-pulse",
-                  )}
-                />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Koszt wykorzystywany do wstępnego rozliczenia, jeśli nie podano kosztu finalnego.
-                </p>
-              </div>
-              <div>
-                <Label>Finalny koszt transportu (€)</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={transportFinal}
-                  onChange={(e) => setTransportFinal(e.target.value)}
-                  placeholder="np. 2300"
-                />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Jeśli podany, ma priorytet w wyliczeniu kosztu własnego.
-                </p>
-              </div>
-            </div>
-
+      <Card>
+        <CardHeader><CardTitle>Transport</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <Label>Adres załadunku</Label>
-              <Textarea
-                value={adresZaladunku}
-                maxLength={300}
-                onChange={(e) => setAdresZaladunku(e.target.value)}
-                placeholder="Ulica, miasto, kraj"
-                rows={2}
-                className="resize-none overflow-hidden min-h-[40px]"
-                onInput={(e) => {
-                  const el = e.currentTarget;
-                  el.style.height = "auto";
-                  el.style.height = el.scrollHeight + "px";
-                }}
+              <Label>Wstępny koszt transportu (€) *</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={transportPrelim}
+                onChange={(e) => setTransportPrelim(e.target.value)}
+                placeholder="np. 2300"
+                disabled={mode === "edit"}
+                className={cn(
+                  mode === "create" && submitTried && !((toNum(transportPrelim) ?? 0) > 0)
+                    && "border-destructive",
+                  shouldPulse(
+                    "transport_cost",
+                    mode === "create" && submitTried && !((toNum(transportPrelim) ?? 0) > 0),
+                  ) && "field-invalid-pulse",
+                )}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Wymagane do zapisu dostawy.
+              </p>
+            </div>
+            <div>
+              <Label>Finalny koszt transportu (€)</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={transportFinal}
+                onChange={(e) => setTransportFinal(e.target.value)}
+                placeholder="np. 2300"
+                disabled={mode === "edit"}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Jeśli podany, ma priorytet w wyliczeniu kosztu własnego.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <Label>Adres załadunku</Label>
+            <Textarea
+              value={adresZaladunku}
+              maxLength={300}
+              onChange={(e) => setAdresZaladunku(e.target.value)}
+              placeholder="Ulica, miasto, kraj"
+              rows={2}
+              disabled={mode === "edit"}
+              className="resize-none overflow-hidden min-h-[40px]"
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = el.scrollHeight + "px";
+              }}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label>Numer załadunku / reference</Label>
+              <Input
+                value={numerZaladunku}
+                maxLength={100}
+                onChange={(e) => setNumerZaladunku(e.target.value)}
+                placeholder="np. REF-12345"
+                disabled={mode === "edit"}
               />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label>Numer załadunku / reference</Label>
-                <Input
-                  value={numerZaladunku}
-                  maxLength={100}
-                  onChange={(e) => setNumerZaladunku(e.target.value)}
-                  placeholder="np. REF-12345"
-                />
-              </div>
-              <div>
-                <Label>Temperatura transportu</Label>
-                <Input
-                  value={temperaturaTransportu}
-                  maxLength={50}
-                  onChange={(e) => setTemperaturaTransportu(e.target.value)}
-                  placeholder="np. +2..+6 °C"
-                />
-              </div>
+            <div>
+              <Label>Temperatura transportu</Label>
+              <Input
+                value={temperaturaTransportu}
+                maxLength={50}
+                onChange={(e) => setTemperaturaTransportu(e.target.value)}
+                placeholder="np. +2..+6 °C"
+                disabled={mode === "edit"}
+              />
             </div>
-
-            {submitTried && isImportMgr && !isSuper && !isKierownik
-              && !(toNum(transportPrelim) ?? 0) && !(toNum(transportFinal) ?? 0) && (
-                <FieldErr msg="Wymagany jest wstępny lub finalny koszt transportu (> 0)." />
-              )}
-          </CardContent>
-        </Card>
-      )}
-
-
-
-
-      {/* Compact sticky capacity bar — one row, no large card/title.
-          AppShell header is sticky h-14 z-30 → offset top-14 so this bar
-          sticks directly below header on mobile + desktop.
-          Dropdowns use z-50 and stay above this z-20 bar. */}
-      <div className={cn(
-        "sticky top-14 z-20 -mx-4 px-4 py-1.5 md:-mx-6 md:px-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b",
-        capacityErrors.length > 0 && "ring-1 ring-destructive",
-      )}>
-        <div className="flex flex-wrap gap-1.5 text-xs sm:text-sm">
-          <div className={cn(
-            "flex-1 min-w-0 rounded-md border bg-card px-2 py-1 truncate",
-            (totals.palety > MAX_PALETY || totals.brutto > MAX_BRUTTO_KG) && "border-destructive text-destructive",
-          )}>
-            <span className="text-muted-foreground">Załadowano:</span>{" "}
-            <span className="font-semibold tabular-nums">{totals.brutto.toFixed(0)} kg / {totals.palety} pal.</span>
           </div>
-          <div className="flex-1 min-w-0 rounded-md border bg-card px-2 py-1 truncate">
-            <span className="text-muted-foreground">Wolne:</span>{" "}
-            <span className="font-semibold tabular-nums">
-              {Math.max(0, MAX_BRUTTO_KG - totals.brutto).toFixed(0)} kg / {Math.max(0, MAX_PALETY - totals.palety)} pal.
-            </span>
-          </div>
-        </div>
-        {capacityErrors.length > 0 && (
-          <div className="mt-1 text-destructive text-xs space-y-0.5">
-            {capacityErrors.map((m, i) => (
-              <div key={i} className="flex items-center gap-1"><AlertCircle className="h-3 w-3 shrink-0" /> <span className="truncate">{m}</span></div>
-            ))}
-          </div>
-        )}
-      </div>
+
+          {mode === "create" && submitTried && !((toNum(transportPrelim) ?? 0) > 0) && (
+            <FieldErr msg="Wstępny koszt transportu (EUR) jest wymagany i musi być > 0." />
+          )}
+          {mode === "edit" && (
+            <p className="text-xs text-muted-foreground">
+              Edycja kosztów transportu i danych załadunku — w kolejnej fazie.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -1371,6 +1325,37 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Sticky capacity bar — pinned inside Pozycje card so it follows
+              through every position while scrolling. Offset top-14 sits
+              directly below AppShell sticky header (h-14 z-30). */}
+          <div className={cn(
+            "sticky top-14 z-20 -mx-6 px-6 py-1.5 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b",
+            capacityErrors.length > 0 && "ring-1 ring-destructive",
+          )}>
+            <div className="flex flex-wrap gap-1.5 text-xs sm:text-sm">
+              <div className={cn(
+                "flex-1 min-w-0 rounded-md border bg-card px-2 py-1 truncate",
+                (totals.palety > MAX_PALETY || totals.brutto > MAX_BRUTTO_KG) && "border-destructive text-destructive",
+              )}>
+                <span className="text-muted-foreground">Załadowano:</span>{" "}
+                <span className="font-semibold tabular-nums">{totals.brutto.toFixed(0)} kg / {totals.palety} pal.</span>
+              </div>
+              <div className="flex-1 min-w-0 rounded-md border bg-card px-2 py-1 truncate">
+                <span className="text-muted-foreground">Wolne:</span>{" "}
+                <span className="font-semibold tabular-nums">
+                  {Math.max(0, MAX_BRUTTO_KG - totals.brutto).toFixed(0)} kg / {Math.max(0, MAX_PALETY - totals.palety)} pal.
+                </span>
+              </div>
+            </div>
+            {capacityErrors.length > 0 && (
+              <div className="mt-1 text-destructive text-xs space-y-0.5">
+                {capacityErrors.map((m, i) => (
+                  <div key={i} className="flex items-center gap-1"><AlertCircle className="h-3 w-3 shrink-0" /> <span className="truncate">{m}</span></div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {pozycje.map((p, i) => {
             const errs = lineErrors[i];
             const showErrs = submitTried;
@@ -1601,7 +1586,7 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     })()}
                   </div>
 
-                  {mode === "create" && (() => {
+                  {(() => {
                     const cena = toNum(p.cena_zakupu);
                     const netto = toNum(p.netto_kg);
                     const brutto = toNum(p.brutto_kg);
@@ -1609,19 +1594,18 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
                     const tFinal = toNum(transportFinal);
                     const tPrelim = toNum(transportPrelim);
                     const t = tFinal && tFinal > 0 ? tFinal : (tPrelim && tPrelim > 0 ? tPrelim : null);
-                    if (cena === null || netto === null || brutto === null || palety === null || t === null) return null;
-                    const kw = computeKosztWlasnyPerKg({
-                      cena_zakupu_per_kg: cena,
-                      netto_kg: netto,
-                      brutto_kg: brutto,
-                      palety,
-                      transport_cost_eur: t,
-                    });
-                    if (kw === null) return null;
-                    const formatted = kw.toLocaleString("pl-PL", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+                    const kw = (cena === null || netto === null || brutto === null || palety === null || t === null)
+                      ? null
+                      : computeKosztWlasnyPerKg({
+                          cena_zakupu_per_kg: cena,
+                          netto_kg: netto,
+                          brutto_kg: brutto,
+                          palety,
+                          transport_cost_eur: t,
+                        });
                     return (
                       <div className="rounded-md bg-muted/40 px-3 py-2 text-sm">
-                        Koszt własny: <strong>{formatted}</strong> €/kg
+                        Koszt własny: <strong>{formatKosztWlasny(kw)}</strong> €/kg
                       </div>
                     );
                   })()}

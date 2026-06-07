@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
+import { computeKosztWlasnyPerKg, formatKosztWlasny } from "@/lib/koszt-wlasny";
 
 interface Dostawa {
   id: string;
@@ -26,6 +27,10 @@ interface Dostawa {
   kraj_id: string | null;
   import_manager_id: string;
   notes: string | null;
+  adres_zaladunku: string | null;
+  numer_zaladunku: string | null;
+  temperatura_transportu: string | null;
+  sesja_id: string | null;
   created_at: string;
 }
 
@@ -89,6 +94,7 @@ function Page() {
   const [dostawa, setDostawa] = useState<Dostawa | null>(null);
   const [pozycje, setPozycje] = useState<Pozycja[]>([]);
   const [statuses, setStatuses] = useState<Map<string, PozycjaStatus>>(new Map());
+  const [transport, setTransport] = useState<{ prelim: number | null; final: number | null } | null>(null);
   const [labels, setLabels] = useState<{
     dostawca: string;
     kraj: string;
@@ -140,6 +146,23 @@ function Page() {
       if (cancelled) return;
       const list = (pz ?? []) as Pozycja[];
       setPozycje(list);
+
+      if (d.sesja_id) {
+        const { data: ts } = await supabase
+          .from("transport_sesje")
+          .select("preliminary_transport_cost_eur, final_transport_cost_eur")
+          .eq("sesja_id", d.sesja_id)
+          .maybeSingle();
+        if (!cancelled) {
+          setTransport({
+            prelim: ts?.preliminary_transport_cost_eur == null ? null : Number(ts.preliminary_transport_cost_eur),
+            final: ts?.final_transport_cost_eur == null ? null : Number(ts.final_transport_cost_eur),
+          });
+        }
+      } else {
+        setTransport(null);
+      }
+
 
       const positionIds = list.map((p) => p.position_id);
       const [pst, dRef, kRef, mRef, prodRef, odmRef, opakRef, krajPochRef] = await Promise.all([
@@ -304,6 +327,19 @@ function Page() {
 
             <Card>
               <CardHeader>
+                <CardTitle>Transport</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div><span className="text-muted-foreground">Wstępny koszt transportu (EUR):</span> <strong>{transport?.prelim != null ? transport.prelim.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}</strong></div>
+                <div><span className="text-muted-foreground">Finalny koszt transportu (EUR):</span> <strong>{transport?.final != null ? transport.final.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}</strong></div>
+                <div className="sm:col-span-2"><span className="text-muted-foreground">Adres załadunku:</span> <strong className="whitespace-pre-wrap">{dostawa.adres_zaladunku || "—"}</strong></div>
+                <div><span className="text-muted-foreground">Numer załadunku / reference:</span> <strong>{dostawa.numer_zaladunku || "—"}</strong></div>
+                <div><span className="text-muted-foreground">Temperatura transportu:</span> <strong>{dostawa.temperatura_transportu || "—"}</strong></div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
                 <CardTitle>Pozycje ({pozycje.length})</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -322,6 +358,7 @@ function Page() {
                         <TableHead className="text-right">Netto kg</TableHead>
                         {canSeeFinance && <TableHead className="text-right">Cena</TableHead>}
                         {canSeeFinance && <TableHead>Waluta</TableHead>}
+                        {canSeeFinance && <TableHead className="text-right">Koszt własny</TableHead>}
                         <TableHead>Status towaru</TableHead>
                         <TableHead>Status rozliczenia</TableHead>
                       </TableRow>
@@ -346,6 +383,17 @@ function Page() {
                             <TableCell className="text-right">{Number(p.netto_kg).toFixed(2)}</TableCell>
                             {canSeeFinance && <TableCell className="text-right">{Number(p.cena_zakupu).toFixed(2)}</TableCell>}
                             {canSeeFinance && <TableCell>{p.waluta}</TableCell>}
+                            {canSeeFinance && (() => {
+                              const t = transport?.final && transport.final > 0 ? transport.final : (transport?.prelim && transport.prelim > 0 ? transport.prelim : null);
+                              const kw = t == null ? null : computeKosztWlasnyPerKg({
+                                cena_zakupu_per_kg: Number(p.cena_zakupu),
+                                netto_kg: Number(p.netto_kg),
+                                brutto_kg: p.brutto_kg == null ? 0 : Number(p.brutto_kg),
+                                palety: Number(p.palety),
+                                transport_cost_eur: t,
+                              });
+                              return <TableCell className="text-right">{formatKosztWlasny(kw)} €/kg</TableCell>;
+                            })()}
                             <TableCell><Badge variant="outline">{st?.stock_status ?? "—"}</Badge></TableCell>
                             <TableCell><Badge variant="outline">{st?.settlement_status ?? "—"}</Badge></TableCell>
                           </TableRow>
