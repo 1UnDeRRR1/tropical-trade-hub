@@ -44,15 +44,9 @@ CREATE POLICY transport_sesje_insert_staff
     public.has_any_role(ARRAY['super_admin','kierownik','asystent_kierownika'])
   );
 
--- ---------- INSERT: import_manager only as himself ----------
-CREATE POLICY transport_sesje_insert_import_manager_own
-  ON public.transport_sesje
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    public.has_role('import_manager')
-    AND import_manager_id = public.current_uzytkownik_id()
-  );
+-- ---------- INSERT: no direct import_manager INSERT ----------
+-- import_manager creates sessions only via RPC utworz_sesje_z_dostawami.
+-- Direct INSERT would allow empty/orphan sessions and bypass the workflow.
 
 -- ---------- UPDATE: super_admin / kierownik / asystent_kierownika ----------
 CREATE POLICY transport_sesje_update_staff
