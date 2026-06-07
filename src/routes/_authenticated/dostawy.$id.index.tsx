@@ -327,6 +327,19 @@ function Page() {
 
             <Card>
               <CardHeader>
+                <CardTitle>Transport</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div><span className="text-muted-foreground">Wstępny koszt transportu (EUR):</span> <strong>{transport?.prelim != null ? transport.prelim.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}</strong></div>
+                <div><span className="text-muted-foreground">Finalny koszt transportu (EUR):</span> <strong>{transport?.final != null ? transport.final.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}</strong></div>
+                <div className="sm:col-span-2"><span className="text-muted-foreground">Adres załadunku:</span> <strong className="whitespace-pre-wrap">{dostawa.adres_zaladunku || "—"}</strong></div>
+                <div><span className="text-muted-foreground">Numer załadunku / reference:</span> <strong>{dostawa.numer_zaladunku || "—"}</strong></div>
+                <div><span className="text-muted-foreground">Temperatura transportu:</span> <strong>{dostawa.temperatura_transportu || "—"}</strong></div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
                 <CardTitle>Pozycje ({pozycje.length})</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
