@@ -273,6 +273,7 @@ export type Database = {
       }
       dostawy: {
         Row: {
+          adres_zaladunku: string | null
           created_at: string
           created_by: string | null
           data_dostawy: string
@@ -283,11 +284,14 @@ export type Database = {
           kraj_id: string | null
           notes: string | null
           numer_dostawy: string
+          numer_zaladunku: string | null
           sesja_id: string | null
           status: string
+          temperatura_transportu: string | null
           updated_at: string
         }
         Insert: {
+          adres_zaladunku?: string | null
           created_at?: string
           created_by?: string | null
           data_dostawy: string
@@ -298,11 +302,14 @@ export type Database = {
           kraj_id?: string | null
           notes?: string | null
           numer_dostawy: string
+          numer_zaladunku?: string | null
           sesja_id?: string | null
           status?: string
+          temperatura_transportu?: string | null
           updated_at?: string
         }
         Update: {
+          adres_zaladunku?: string | null
           created_at?: string
           created_by?: string | null
           data_dostawy?: string
@@ -313,8 +320,10 @@ export type Database = {
           kraj_id?: string | null
           notes?: string | null
           numer_dostawy?: string
+          numer_zaladunku?: string | null
           sesja_id?: string | null
           status?: string
+          temperatura_transportu?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1416,6 +1425,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          dane_kierowcy: string | null
           eta: string | null
           etd: string | null
           final_locked_at: string | null
@@ -1434,6 +1444,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          dane_kierowcy?: string | null
           eta?: string | null
           etd?: string | null
           final_locked_at?: string | null
@@ -1452,6 +1463,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          dane_kierowcy?: string | null
           eta?: string | null
           etd?: string | null
           final_locked_at?: string | null
