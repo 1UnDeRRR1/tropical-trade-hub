@@ -147,6 +147,23 @@ function Page() {
       const list = (pz ?? []) as Pozycja[];
       setPozycje(list);
 
+      if (d.sesja_id) {
+        const { data: ts } = await supabase
+          .from("transport_sesje")
+          .select("preliminary_transport_cost_eur, final_transport_cost_eur")
+          .eq("sesja_id", d.sesja_id)
+          .maybeSingle();
+        if (!cancelled) {
+          setTransport({
+            prelim: ts?.preliminary_transport_cost_eur == null ? null : Number(ts.preliminary_transport_cost_eur),
+            final: ts?.final_transport_cost_eur == null ? null : Number(ts.final_transport_cost_eur),
+          });
+        }
+      } else {
+        setTransport(null);
+      }
+
+
       const positionIds = list.map((p) => p.position_id);
       const [pst, dRef, kRef, mRef, prodRef, odmRef, opakRef, krajPochRef] = await Promise.all([
         positionIds.length
