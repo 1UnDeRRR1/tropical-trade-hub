@@ -435,13 +435,13 @@ function Page() {
                           </div>
                         )}
                         {canSeeFinance && (() => {
-                          const t = transport ? (transport.final ?? transport.prelim) : null;
+                          const t = transport?.final && transport.final > 0 ? transport.final : (transport?.prelim && transport.prelim > 0 ? transport.prelim : null);
                           const kw = t == null ? null : computeKosztWlasnyPerKg({
-                            cena_zakupu: Number(p.cena_zakupu),
-                            waluta: p.waluta,
+                            cena_zakupu_per_kg: Number(p.cena_zakupu),
                             netto_kg: Number(p.netto_kg),
-                            transport_eur: t,
-                            total_netto_kg: pozycje.reduce((s, x) => s + Number(x.netto_kg || 0), 0),
+                            brutto_kg: p.brutto_kg == null ? 0 : Number(p.brutto_kg),
+                            palety: Number(p.palety),
+                            transport_cost_eur: t,
                           });
                           return (
                             <div className="text-xs">
