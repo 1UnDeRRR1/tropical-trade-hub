@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Truck,
+  Container,
   Route as RouteIcon,
   Warehouse,
   ShoppingCart,
@@ -26,6 +27,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { path: "/panel", label: "Panel główny", icon: LayoutDashboard, roles: ["kierownik", "asystent_kierownika", "import_manager", "sales_manager", "logistyk", "magazynier", "fakturowanie", "export_manager"] },
   { path: "/dostawy", label: "Dostawy", icon: Truck, roles: ["kierownik", "asystent_kierownika", "import_manager", "logistyk", "magazynier"] },
+  { path: "/sesje", label: "Sesje transportowe", icon: Container, roles: ["kierownik", "asystent_kierownika", "import_manager", "logistyk"] },
   { path: "/logistyka", label: "Logistyka", icon: RouteIcon, roles: ["kierownik", "asystent_kierownika", "import_manager", "logistyk"] },
   { path: "/magazyn", label: "Magazyn", icon: Warehouse, roles: ["kierownik", "asystent_kierownika", "import_manager", "sales_manager", "magazynier"] },
   { path: "/sprzedaz", label: "Sprzedaż", icon: ShoppingCart, roles: ["kierownik", "asystent_kierownika", "sales_manager"] },
