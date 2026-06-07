@@ -891,13 +891,25 @@ export function DostawaForm({ mode, existing }: DostawaFormProps) {
     else if (dataZaladunku && dataDostawy <= dataZaladunku) freshHeaderErrors.push("Data dostawy musi być późniejsza niż data załadunku");
     if (!managerId) freshHeaderErrors.push("Import manager wymagany");
     if ((notes ?? "").length > 100) freshHeaderErrors.push("Komentarz: maksymalnie 100 znaków");
+
+    // Transport cost: import_manager (without staff override) must provide preliminary>0 OR final>0.
+    const tPrelimNum = toNum(transportPrelim) ?? 0;
+    const tFinalNum = toNum(transportFinal) ?? 0;
+    if (mode === "create" && isImportMgr && !isSuper && !isKierownik) {
+      if (!(tPrelimNum > 0) && !(tFinalNum > 0)) {
+        freshHeaderErrors.push("Wymagany jest wstępny lub finalny koszt transportu (> 0).");
+      }
+    }
+    if (transportPrelim.trim() && !(tPrelimNum >= 0)) freshHeaderErrors.push("Wstępny koszt transportu: nieprawidłowa liczba.");
+    if (transportFinal.trim() && !(tFinalNum >= 0)) freshHeaderErrors.push("Finalny koszt transportu: nieprawidłowa liczba.");
+
     const freshTotals = calculateTotals(pozycje);
     const freshCapacityErrors: string[] = [];
     if (freshTotals.palety > MAX_PALETY) freshCapacityErrors.push(`Łączna liczba palet ${freshTotals.palety} przekracza limit auta (${MAX_PALETY}).`);
     if (freshTotals.brutto > MAX_BRUTTO_KG) freshCapacityErrors.push(`Łączna waga brutto ${freshTotals.brutto.toFixed(2)} kg przekracza limit auta (${MAX_BRUTTO_KG} kg).`);
     if (freshHeaderErrors.length > 0 || freshCapacityErrors.length > 0 || freshLineErrors.some((e) => Object.keys(e).length > 0)) {
       setSubmitError("Formularz zawiera błędy. Popraw zaznaczone pola.");
-      triggerFailedSubmitFeedback(invalidFieldKeys(freshLineErrors));
+      triggerFailedSubmitFeedback([...invalidFieldKeys(freshLineErrors), "transport_cost"]);
       return;
     }
     setSaving(true);
