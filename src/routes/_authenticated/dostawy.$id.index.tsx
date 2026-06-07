@@ -420,6 +420,9 @@ function Page() {
                               : opakLabel(p, labels.opakowania)}
                         </div>
                         <div className="text-xs text-muted-foreground">
+                          {[p.klasa, p.kaliber, p.marka].filter(Boolean).join(" · ") || "—"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
                           Materiał tary: <strong>{materialLabel(p.material_tary)}</strong>
                         </div>
                         <div className="text-xs text-muted-foreground">
