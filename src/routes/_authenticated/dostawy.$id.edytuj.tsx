@@ -38,6 +38,22 @@ function Page() {
         .from("pozycje_dostawy").select("*").eq("dostawa_id", id).order("position_id");
       if (cancelled) return;
       if (pErr) { setErr(pErr.message); setLoading(false); return; }
+
+      let transportPrelim: number | null = null;
+      let transportFinal: number | null = null;
+      if (d.sesja_id) {
+        const { data: ts } = await supabase
+          .from("transport_sesje")
+          .select("preliminary_transport_cost_eur, final_transport_cost_eur")
+          .eq("sesja_id", d.sesja_id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (ts) {
+          transportPrelim = ts.preliminary_transport_cost_eur == null ? null : Number(ts.preliminary_transport_cost_eur);
+          transportFinal = ts.final_transport_cost_eur == null ? null : Number(ts.final_transport_cost_eur);
+        }
+      }
+
       setData({
         id: d.id,
         numer_dostawy: d.numer_dostawy,
@@ -48,6 +64,11 @@ function Page() {
         kraj_id: d.kraj_id,
         import_manager_id: d.import_manager_id,
         notes: d.notes,
+        adres_zaladunku: d.adres_zaladunku,
+        numer_zaladunku: d.numer_zaladunku,
+        temperatura_transportu: d.temperatura_transportu,
+        transport_prelim_eur: transportPrelim,
+        transport_final_eur: transportFinal,
         positions: (pz ?? []).map((p) => ({
           id: p.id,
           produkt_id: p.produkt_id,
