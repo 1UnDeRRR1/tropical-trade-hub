@@ -369,6 +369,7 @@ function Page() {
                             <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
                             <TableCell>{labels.produkty.get(p.produkt_id) ?? p.produkt_id}</TableCell>
                             <TableCell>{p.odmiana_id ? (labels.odmiany.get(p.odmiana_id) ?? p.odmiana_id) : "—"}</TableCell>
+                            <TableCell>{[p.klasa, p.kaliber, p.marka].filter(Boolean).join(" · ") || "—"}</TableCell>
                             <TableCell>
                               {opakLabel(p, labels.opakowania)}
                               {p.opakowanie_source === "custom" && (
