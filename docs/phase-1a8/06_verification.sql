@@ -224,11 +224,7 @@ BEGIN
     END IF;
 
     -- ustaw_wstepny_koszt_transportu(uuid,numeric): public RPC — authenticated only
-    SELECT p.oid INTO v_fn_oid
-      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'public'
-       AND p.proname = 'ustaw_wstepny_koszt_transportu'
-       AND pg_get_function_identity_arguments(p.oid) = 'uuid, numeric';
+    v_fn_oid := to_regprocedure('public.ustaw_wstepny_koszt_transportu(uuid,numeric)')::oid;
     IF v_fn_oid IS NULL THEN
       RAISE EXCEPTION 'VERIFY FAIL: ustaw_wstepny_koszt_transportu(uuid,numeric) not found for grant check';
     END IF;
