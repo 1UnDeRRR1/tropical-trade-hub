@@ -94,6 +94,7 @@ function Page() {
   const [dostawa, setDostawa] = useState<Dostawa | null>(null);
   const [pozycje, setPozycje] = useState<Pozycja[]>([]);
   const [statuses, setStatuses] = useState<Map<string, PozycjaStatus>>(new Map());
+  const [transport, setTransport] = useState<{ prelim: number | null; final: number | null } | null>(null);
   const [labels, setLabels] = useState<{
     dostawca: string;
     kraj: string;
