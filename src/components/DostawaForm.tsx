@@ -426,6 +426,9 @@ export interface ExistingDostawa {
     opakowanie_custom_text: string | null;
     material_tary: "karton"|"drewno"|"plastik";
     kraj_id: string | null;
+    klasa: string | null;
+    kaliber: string | null;
+    marka: string | null;
     palety: number;
     ilosc_opakowan: number | null;
     netto_kg: number;
@@ -434,6 +437,7 @@ export interface ExistingDostawa {
     waluta: string;
     notes: string | null;
   }>;
+
 }
 
 interface DostawaFormProps {
